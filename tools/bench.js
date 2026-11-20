@@ -184,7 +184,12 @@ function stopBrowser() {
 }
 stopBrowser();
 server.close();
-setTimeout(() => fs.rmSync(profile, { recursive: true, force: true, maxRetries: 5 }), 1500).unref?.();
+await new Promise((r) => setTimeout(r, 1500)); // let the browser release its profile files
+try {
+  fs.rmSync(profile, { recursive: true, force: true, maxRetries: 5, retryDelay: 300 });
+} catch {
+  /* a locked temp profile is left for the OS to clean */
+}
 
 if (!result) {
   console.error('bench: trang benchmark không gửi kết quả (hết giờ chờ). Thử chạy với --headless hoặc --browser <đường dẫn>.');
