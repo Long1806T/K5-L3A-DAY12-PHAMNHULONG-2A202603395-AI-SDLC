@@ -79,20 +79,20 @@ test('carry_capacity (10) is a hard limit', () => {
 
 // ---------- deposit & lanterns ----------
 
-test('interact within 2.0 m deposits min(carried, missing); at 10 the lantern lights (+10/mote, +100)', () => {
+test('interact within 2.0 m deposits min(carried, missing); at 10 the lantern lights (+5/mote, +100)', () => {
   const sc = bare({ player: { pos: [0, 0, 25 - T.interact_radius], carried: 10 } });
   const { events, snaps } = sim({ scenario: sc, frames: tap(0, 'interact'), ticks: 10 });
   assert.deepEqual(events, [
     { tick: 1, name: 'deposit', data: { lantern_id: 'L1', amount: 10, deposited: 10 } },
-    { tick: 1, name: 'lantern_lit', data: { lantern_id: 'L1' } },
+    { tick: 1, name: 'lantern_lit', data: { lantern_id: 'L1', relight: false } }, // P3: relight flag
   ]);
-  assert.equal(snaps[10].score, 10 * T.score.per_mote + T.score.per_lantern);
+  assert.equal(snaps[10].score, 10 * T.score.per_mote + T.score.per_lantern); // P3: per_mote is 5 now
 });
 
 test('lanterns remember partial progress; extra light stays with the player', () => {
   const partial = sim({ scenario: bare({ player: { pos: [0, 0, 24], carried: 3 } }), frames: tap(0, 'interact'), ticks: 5 });
   assert.equal(partial.snaps[5].lanterns[0].deposited, 3);
-  assert.equal(partial.snaps[5].score, 30);
+  assert.equal(partial.snaps[5].score, 3 * T.score.per_mote); // P3: +5 per mote
   const extra = sim({ scenario: bare({ player: { pos: [0, 0, 24], carried: 10 }, lanterns: [{ id: 'L1', deposited: 4 }] }), frames: tap(0, 'interact'), ticks: 5 });
   assert.equal(extra.named('deposit')[0].data.amount, 6);
   assert.equal(extra.snaps[5].player.carried, 4);
@@ -107,23 +107,16 @@ test('buttons trigger on false→true only; equal distance → smaller id', () =
   const sc = bare({ player: { pos: [0, 0, 24], carried: 10 }, lanterns: [{ id: 'L1', deposited: 3 }, { id: 'L2', pos: [1, 0, 24] }] });
   const held = sim({ scenario: sc, frames: [{ tick: 0, interact: true }], ticks: 30 });
   assert.equal(held.named('deposit').length, 1);
+  // P3: a lit lantern below full fuel can be refuelled, so the second tap picks L1 again
+  // (tie at 1 m with L2, smaller id wins) and tops up the fuel it burnt since tick 1.
   const tapTwice = sim({ scenario: sc, frames: [...tap(0, 'interact'), ...tap(6, 'interact')], ticks: 30 });
-  assert.deepEqual(tapTwice.named('deposit').map((e) => [e.tick, e.data.lantern_id, e.data.amount]), [[1, 'L1', 7], [7, 'L2', 3]]);
+  assert.deepEqual(tapTwice.named('deposit').map((e) => [e.tick, e.data.lantern_id, e.data.amount]), [[1, 'L1', 7]]);
+  assert.deepEqual(tapTwice.named('refuel').map((e) => [e.tick, e.data]), [[7, { lantern_id: 'L1', amount: 1, fuel: 100 }]]);
 });
 
-test('lighting the last lantern wins: +floor(time left)×2 + 50×flames; pre-lit lanterns score nothing', () => {
-  const sc = bare({ player: { pos: [0, 0, 24], carried: 10 }, lanterns: ['L2', 'L3', 'L4', 'L5'].map((id) => ({ id, lit: true })) });
-  const { world, events, snaps } = sim({ scenario: sc, frames: tap(0, 'interact'), ticks: 600 });
-  assert.equal(snaps[0].score, 0);
-  assert.deepEqual(events.at(-1), { tick: 1, name: 'game_over', data: { result: 'won', reason: 'all_lit' } });
-  assert.equal(world.score, 100 + 100 + Math.floor(300 - 1 / 60) * 2 + 3 * 50);
-});
-
-test('all lanterns lit on the very tick time runs out still wins (P2 order)', () => {
-  const sc = bare({ player: { pos: [0, 0, 24], carried: 10 }, time_left_s: 1 / 60, lanterns: ['L2', 'L3', 'L4', 'L5'].map((id) => ({ id, lit: true })) });
-  const { world } = sim({ scenario: sc, frames: tap(0, 'interact'), ticks: 5 });
-  assert.deepEqual(world.result, { result: 'won', reason: 'all_lit', tick: 1 });
-});
+// P3: the two Phase 2 tests "lighting the last lantern wins" and "all lanterns lit on the
+// tick time runs out still wins" were DELETED: Ticket-03 removed the early win (all_lit).
+// The dawn rule that replaces them is covered in tests/fuel.test.js.
 
 // ---------- shades, hits, losing ----------
 

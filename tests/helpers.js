@@ -21,11 +21,11 @@ export function bare(extra = {}) {
  * Runs the core directly (same code path as the CLI, minus file IO).
  * Returns { world, events, snaps } where snaps[tick] is the snapshot after that tick.
  */
-export function sim({ scenario = null, frames = [], ticks = 60, seed = 1, night = 1 } = {}) {
+export function sim({ scenario = null, frames = [], ticks = 60, seed = 1, night = 1, tuning = T } = {}) {
   const lanternIds = getNight(night).lanterns.map((l) => l.id);
   const sc = scenario ? validateScenario(structuredClone(scenario), lanternIds) : null;
   const inputAt = createInputTimeline(validateInputs({ frames }));
-  const world = createWorld({ tuning: T, night, seed, scenario: sc });
+  const world = createWorld({ tuning, night, seed, scenario: sc });
   const events = [];
   const snaps = [snapshot(world)];
   for (let k = 0; k < ticks && world.state === 'playing'; k++) {

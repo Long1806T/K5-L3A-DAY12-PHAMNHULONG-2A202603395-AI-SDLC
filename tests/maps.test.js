@@ -27,7 +27,7 @@ test('Night 2: two islands + bamboo bridge, 6 lanterns, pads, charm on the bridg
   assert.equal(n.moteSpawns.length, 24);
   assert.equal(n.shadeSpawns.length, 16);
   assert.deepEqual(n.charms, [{ id: 'C1', pos: [35, 0, 0] }]);
-  assert.equal(T.night2_duration_s, 330);
+  assert.equal(T.night2_duration_s, 270); // P3: Ticket-03 shortened the nights
 });
 
 test('Night 3: tiers, ramps at 30°/150°, tower; 30 mote points sit on the ground', () => {

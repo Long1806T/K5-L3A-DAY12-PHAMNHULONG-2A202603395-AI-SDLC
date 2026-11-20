@@ -20,9 +20,10 @@ test('runs N ticks, snapshot every 10 from tick 0, end line last, exit 0', () =>
     for (const k of ['night', 'state', 'score', 'wind', 'player', 'lanterns', 'shades', 'motes_active', 'motes', 'drifters', 'charms']) assert.ok(k in s, k);
     assert.equal(s.night, 1);
     assert.deepEqual(Object.keys(s.wind), ['active', 'dir_deg']);
-    assert.deepEqual(Object.keys(s.player), ['pos', 'vel', 'grounded', 'flames', 'carried', 'invuln', 'dash_cd_s', 'pulse_cd_s', 'charm_s']);
+    assert.deepEqual(Object.keys(s.player), ['pos', 'vel', 'grounded', 'flames', 'carried', 'invuln', 'dash_cd_s', 'pulse_cd_s', 'charm_s', 'capacity']);
     for (const sh of s.shades) assert.deepEqual(Object.keys(sh), ['id', 'pos', 'state']);
-    for (const l of s.lanterns) assert.deepEqual(Object.keys(l), ['id', 'pos', 'lit', 'deposited']);
+    // P3: v1.2 adds fuel / ever_lit / relit_count to every lantern
+    for (const l of s.lanterns) assert.deepEqual(Object.keys(l), ['id', 'pos', 'lit', 'deposited', 'fuel', 'ever_lit', 'relit_count']);
     for (const m of s.motes) assert.deepEqual(Object.keys(m), ['id', 'pos', 'kind', 'ttl_s']);
     assert.equal(s.motes_active, s.motes.length);
   }
@@ -63,14 +64,16 @@ test('game over stops the run early (dawn)', () => {
   assert.ok(lines.some((l) => l.name === 'game_over' && l.tick === 120 && l.data.reason === 'dawn'));
 });
 
-test('winning via walk + interact ends with state won', () => {
+test('lighting the last lantern no longer ends the night (P3: no early win)', () => {
+  // P3: Ticket-03 replaced "win as soon as every lantern is lit" with the dawn rule,
+  // so the same scenario now keeps playing after the last lantern lights.
   const out = tmp('win.jsonl');
   const { lines } = cli(['--seed', 1, '--night', 1, '--scenario', `${SC}/win-last-lantern.scenario.json`,
     '--inputs', `${SC}/walk-and-interact.inputs.json`, '--ticks', 600, '--out', out]);
   const names = lines.filter((l) => l.type === 'event').map((l) => `${l.tick}:${l.name}`);
-  assert.deepEqual(names, ['0:night_start', '21:deposit', '21:lantern_lit', '21:game_over']);
-  assert.equal(lines.at(-1).state, 'won');
-  assert.equal(lines.at(-1).ticks, 21);
+  assert.deepEqual(names, ['0:night_start', '21:deposit', '21:lantern_lit']);
+  assert.deepEqual(lines.find((l) => l.name === 'lantern_lit').data, { lantern_id: 'L1', relight: false });
+  assert.deepEqual(lines.at(-1), { type: 'end', ticks: 600, state: 'playing', score: 10 * 5 + 100 });
 });
 
 for (const [file, flag] of [
@@ -104,7 +107,7 @@ test('other errors exit non-zero with a message (missing --out, unknown night, b
 });
 
 test('--night 2 and --night 3 load their own maps and durations (P2-4)', () => {
-  for (const [night, lanterns, time] of [[2, 6, 330], [3, 7, 360]]) {
+  for (const [night, lanterns, time] of [[2, 6, 270], [3, 7, 300]]) { // P3: shorter nights
     const r = cli(['--seed', 9, '--night', night, '--ticks', 10, '--out', tmp(`n${night}.jsonl`)]);
     assert.equal(r.code, 0, r.stderr);
     assert.equal(r.lines[0].night, night);

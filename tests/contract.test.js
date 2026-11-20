@@ -1,4 +1,4 @@
-// P2-1 (was AC1): game.contract.json v1.1 carries the standard numbers of Ticket-02.
+// P3-1, P2-1 (was AC1): game.contract.json v1.2 = Ticket-02 standard numbers + Ticket-03 fuel/win keys.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -9,21 +9,25 @@ import { loadTuning } from '../src/headless.js';
 
 const STANDARD = {
   player_speed: 6.0, carry_capacity: 10, lantern_cost: 10, lantern_count_night1: 5, pickup_radius: 1.0,
-  interact_radius: 2.0, pulse_cost: 3, pulse_radius: 5.0, night1_duration_s: 300, night2_duration_s: 330,
-  night3_duration_s: 360, flames: 3, invuln_s: 1.5, hit_drop_ratio: 0.5, pulse_stun_s: 2.0, pulse_push_m: 4.0,
+  interact_radius: 2.0, pulse_cost: 3, pulse_radius: 5.0, flames: 3, invuln_s: 1.5, hit_drop_ratio: 0.5, pulse_stun_s: 2.0, pulse_push_m: 4.0,
   pulse_cooldown_s: 3.0, safe_radius: 6.0, shade_speed: 4.0, shade_hit_radius: 1.0, fall_enabled: true,
   dash_speed: 14.0, dash_duration_s: 0.2, dash_cooldown_s: 1.5,
+  // P3: Ticket-03 replaces the night lengths and adds the fuel/win keys
+  night1_duration_s: 240, night2_duration_s: 270, night3_duration_s: 300,
+  fuel_max: 100, fuel_decay_per_s: 1.0, fuel_per_mote: 10, relight_cost: 5, win_ratio: 0.6, drain_per_s: 5,
+  low_fuel_threshold: 30, capacity_max: 20,
 };
 
-test('contract v1.1 has the required top-level fields', () => {
-  assert.equal(CONTRACT.contract_version, '1.1');
+test('contract v1.2 has the required top-level fields', () => {
+  assert.equal(CONTRACT.contract_version, '1.2');
   for (const k of ['team', 'build_cmd', 'run_cmd', 'headless_cmd']) assert.ok(typeof CONTRACT[k] === 'string' && CONTRACT[k].length > 0, k);
   assert.ok(fs.existsSync(path.join(ROOT, CONTRACT.headless_cmd.split(/\s+/)[1])), 'headless entry file exists');
 });
 
-test('tuning equals the Ticket-02 standard numbers', () => {
+test('tuning equals the standard numbers (Ticket-02 + Ticket-03)', () => {
   for (const [k, v] of Object.entries(STANDARD)) assert.equal(T[k], v, k);
-  assert.deepEqual(T.score, { per_mote: 10, per_lantern: 100, per_stun: 5, per_second_left: 2, per_flame_left: 50 });
+  // P3: Ticket-03 replaces the whole score formula (time bonus removed → per_second_left 0)
+  assert.deepEqual(T.score, { per_mote: 5, per_lantern: 100, per_relight: 40, per_stun: 5, per_stun_drain: 15, per_lit_at_dawn: 50, per_second_left: 0, per_flame_left: 50 });
   assert.equal(T.shade_speed_night3, 4.5, 'Night 3 shade speed (extra key)');
 });
 

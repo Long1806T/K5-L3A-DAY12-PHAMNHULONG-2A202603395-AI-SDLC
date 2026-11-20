@@ -44,9 +44,10 @@ test('autopilot wins a full night and the CLI replays it to the same end line', 
   assert.equal(world.state, 'won');
   const inputs = tmp('bot.inputs.json', { frames });
   const out = tmp('bot.jsonl');
-  const r = cli(['--seed', 1, '--night', 1, '--inputs', inputs, '--ticks', 18000, '--out', out]);
+  const r = cli(['--seed', 1, '--night', 1, '--inputs', inputs, '--ticks', 21600, '--out', out]);
   assert.equal(r.code, 0);
   assert.deepEqual(r.lines.at(-1), { type: 'end', ticks: world.tick, state: 'won', score: world.score });
-  const lit = r.lines.filter((l) => l.name === 'lantern_lit').map((l) => l.data.lantern_id).sort();
-  assert.deepEqual(lit, ['L1', 'L2', 'L3', 'L4', 'L5']);
+  // P3: a night is won at dawn with ≥ 3 of 5 lanterns lit (no longer all five)
+  assert.equal(r.lines.find((l) => l.name === 'game_over').data.reason, 'dawn_survived');
+  assert.ok(world.lanterns.filter((l) => l.lit).length >= 3);
 });
