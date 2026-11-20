@@ -61,7 +61,7 @@ if (Number(PHASE) >= 3) {
   if (has.status !== 0) line(`Không có tag \`${prev}\` trong bản clone này nên bỏ qua.`);
   else {
     const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'ddl-old-tests-'));
-    for (const f of ['src', 'scenarios', 'tools', 'game.contract.json', 'package.json']) fs.cpSync(path.join(ROOT, f), path.join(tmp, f), { recursive: true });
+    for (const f of ['src', 'scenarios', 'tools', 'index.html', 'game.contract.json', 'package.json']) fs.cpSync(path.join(ROOT, f), path.join(tmp, f), { recursive: true });
     const arc = spawnSync('git', ['archive', prev, 'tests'], { cwd: ROOT, maxBuffer: 1 << 26 });
     spawnSync('tar', ['-x', '-C', tmp], { input: arc.stdout });
     const files = fs.readdirSync(path.join(tmp, 'tests')).filter((f) => f.endsWith('.test.js')).map((f) => `tests/${f}`);
