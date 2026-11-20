@@ -1,4 +1,4 @@
-// AC1: game.contract.json exists, is complete, and is the tuning the game uses.
+// P2-1 (was AC1): game.contract.json v1.1 carries the standard numbers of Ticket-02.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -7,32 +7,27 @@ import { CONTRACT, ROOT, T } from './helpers.js';
 import { getNight } from '../src/core/level.js';
 import { loadTuning } from '../src/headless.js';
 
-const NUMERIC = [
-  'player_speed', 'carry_capacity', 'lantern_cost', 'lantern_count_night1', 'pickup_radius', 'interact_radius',
-  'pulse_cost', 'pulse_radius', 'night1_duration_s', 'flames', 'invuln_s', 'hit_drop_ratio', 'pulse_stun_s',
-  'pulse_push_m', 'pulse_cooldown_s', 'safe_radius', 'shade_speed', 'shade_hit_radius',
-];
+const STANDARD = {
+  player_speed: 6.0, carry_capacity: 10, lantern_cost: 10, lantern_count_night1: 5, pickup_radius: 1.0,
+  interact_radius: 2.0, pulse_cost: 3, pulse_radius: 5.0, night1_duration_s: 300, night2_duration_s: 330,
+  night3_duration_s: 360, flames: 3, invuln_s: 1.5, hit_drop_ratio: 0.5, pulse_stun_s: 2.0, pulse_push_m: 4.0,
+  pulse_cooldown_s: 3.0, safe_radius: 6.0, shade_speed: 4.0, shade_hit_radius: 1.0, fall_enabled: true,
+  dash_speed: 14.0, dash_duration_s: 0.2, dash_cooldown_s: 1.5,
+};
 
-test('contract has the required top-level fields', () => {
-  assert.equal(CONTRACT.contract_version, '1.0');
-  for (const k of ['team', 'build_cmd', 'run_cmd', 'headless_cmd']) {
-    assert.equal(typeof CONTRACT[k], 'string', k);
-    assert.ok(CONTRACT[k].length > 0, k);
-  }
+test('contract v1.1 has the required top-level fields', () => {
+  assert.equal(CONTRACT.contract_version, '1.1');
+  for (const k of ['team', 'build_cmd', 'run_cmd', 'headless_cmd']) assert.ok(typeof CONTRACT[k] === 'string' && CONTRACT[k].length > 0, k);
   assert.ok(fs.existsSync(path.join(ROOT, CONTRACT.headless_cmd.split(/\s+/)[1])), 'headless entry file exists');
 });
 
-test('every tuning key is declared with a usable value', () => {
-  for (const k of NUMERIC) assert.ok(Number.isFinite(T[k]) && T[k] >= 0, `${k} = ${T[k]}`);
-  assert.equal(typeof T.fall_enabled, 'boolean');
-  for (const k of ['per_mote', 'per_lantern', 'per_stun', 'per_second_left', 'per_flame_left']) {
-    assert.ok(Number.isFinite(T.score[k]), `score.${k}`);
-  }
-  assert.ok(Number.isInteger(T.carry_capacity) && Number.isInteger(T.lantern_cost) && Number.isInteger(T.flames));
+test('tuning equals the Ticket-02 standard numbers', () => {
+  for (const [k, v] of Object.entries(STANDARD)) assert.equal(T[k], v, k);
+  assert.deepEqual(T.score, { per_mote: 10, per_lantern: 100, per_stun: 5, per_second_left: 2, per_flame_left: 50 });
+  assert.equal(T.shade_speed_night3, 4.5, 'Night 3 shade speed (extra key)');
 });
 
 test('night 1 has exactly lantern_count_night1 lanterns', () => {
-  assert.equal(T.lantern_count_night1, 5);
   assert.equal(getNight(1).lanterns.length, T.lantern_count_night1);
 });
 
@@ -46,10 +41,4 @@ test('src/core stays deterministic: no Math.random / Date / performance (AGENTS.
     const code = fs.readFileSync(path.join(dir, f), 'utf8').replace(/\/\/.*$/gm, '');
     assert.doesNotMatch(code, /Math\.random|Date\.now|new Date|performance\./, f);
   }
-});
-
-test('design invariants we rely on', () => {
-  assert.ok(T.safe_radius > T.interact_radius, 'depositing happens inside the safe zone');
-  assert.ok(T.player_speed > T.shade_speed, 'the player can outrun shades');
-  assert.ok(T.carry_capacity >= T.lantern_cost, 'one trip can light one lantern');
 });

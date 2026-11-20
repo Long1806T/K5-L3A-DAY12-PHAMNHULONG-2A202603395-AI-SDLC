@@ -14,7 +14,7 @@ export const T = CONTRACT.tuning;
 
 /** Scenario with nothing random: only what the test lists exists. */
 export function bare(extra = {}) {
-  return { random_motes: false, random_shades: false, motes: [], shades: [], ...extra };
+  return { random_motes: false, random_shades: false, random_drifters: false, wind_enabled: false, motes: [], shades: [], ...extra };
 }
 
 /**

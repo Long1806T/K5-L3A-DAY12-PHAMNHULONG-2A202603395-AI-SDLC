@@ -1,7 +1,44 @@
 {
-  "player": { "pos": [0, 0, 24] },
-  "random_motes": false,
-  "random_shades": false,
-  "motes": [],
-  "shades": [{ "id": "S1", "pos": [0, 1, 12] }, { "id": "S2", "pos": [8, 1, 25] }, { "id": "S3", "pos": [-6, 1, 30] }]
+ "player": {
+  "pos": [
+   0,
+   0,
+   24
+  ]
+ },
+ "random_motes": false,
+ "random_shades": false,
+ "motes": [],
+ "shades": [
+  {
+   "id": "S1",
+   "pos": [
+    0,
+    1,
+    12
+   ]
+  },
+  {
+   "id": "S2",
+   "pos": [
+    8,
+    1,
+    25
+   ]
+  },
+  {
+   "id": "S3",
+   "pos": [
+    -6,
+    1,
+    30
+   ]
+  }
+ ],
+ "lanterns": [
+  {
+   "id": "L1",
+   "lit": true
+  }
+ ]
 }
