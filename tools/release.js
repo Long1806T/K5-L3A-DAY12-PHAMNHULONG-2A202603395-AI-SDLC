@@ -62,7 +62,14 @@ for (const [tag, sha] of Object.entries(PHASE_COMMITS)) {
 }
 
 say('Chạy toàn bộ test');
-run(process.execPath, ['scripts/run-tests.js'], { quiet: true }).status === 0 && console.log('  test xanh');
+{
+  const t = run(process.execPath, ['scripts/run-tests.js'], { quiet: true, allowFail: true });
+  console.log((t.stdout || '').split('\n').filter((l) => /^# (tests|pass|fail) |^not ok/.test(l)).map((l) => `    ${l}`).join('\n'));
+  if (t.status !== 0) {
+    console.error('✗ Test đỏ: sửa trước khi phát hành (chạy npm test để xem chi tiết).');
+    process.exit(1);
+  }
+}
 
 if (!args.includes('--skip-bench')) {
   say('Đo bench và soak trên máy này (bench mở một cửa sổ Chrome/Edge 1280×720 khoảng 40 giây, đừng thu nhỏ nó)');

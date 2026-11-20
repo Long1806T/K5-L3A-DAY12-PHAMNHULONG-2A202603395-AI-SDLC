@@ -12,3 +12,7 @@ description: Run the game's checks and save evidence for a phase (tests, headles
 5. `sh scripts/harness-check.sh N` proves the hooks still block a red suite.
 6. Update the hand-written traceability table `docs/proof/phase-N/README.md`: requirement → how verified → evidence → result. Write "chưa đạt" honestly (e.g. FPS measured only in software rendering).
 7. Commit evidence last, in its own commit, right after the code it describes.
+8. Phase 4 / release only:
+   - `node tools/soak.js --seed 7 --nights 10 --out soak.json` and `node tools/bench.js --seed 42 --duration 30 --out bench.json` (the contract's `soak_cmd` / `bench_cmd`). With no GPU, set `BENCH_BROWSER_FLAGS="--use-angle=swiftshader --enable-unsafe-swiftshader"` and say in the docs that the FPS is not meaningful.
+   - `node tools/demo.mjs` renders `docs/demo/demo.mp4` (< 5 min) from the real game and real command output.
+   - `node tools/release.js` is run by the user on their own machine: it re-measures bench/soak, tags `phase-1`…`phase-4` without moving existing tags, zips the build and creates Release `v1.0.0`.
