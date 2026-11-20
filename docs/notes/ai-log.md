@@ -114,3 +114,55 @@ Cách tiết kiệm:
 
 - ADR và bảng "test bị ảnh hưởng" viết trước, nên khi chạy test cũ biết ngay đỏ chỗ nào là đúng.
 - Sửa core bằng các thay thế nhỏ có kiểm tra (script dừng nếu không tìm thấy đoạn cần thay), không viết lại cả file.
+
+## Phase 4 (Ticket-04 phát hành v1.0.0 + Contract v1.3)
+
+### Các bước chính
+
+1. Dán Ticket-04. Agent viết tiêu chí P4-1…P4-16 và 18 giả định ([phase-4.md](phase-4.md)) trước khi code.
+2. Thứ tự làm: contract v1.3 + soak → cảnh bench (dùng tuning riêng, không sửa core) + runner mở Chrome → bảng xếp hạng (luật thuần + API trên `tools/serve.js` + export) → đổi phím, phụ đề, giảm chuyển động, chữ lớn → 13 test mới → bằng chứng → tài liệu, retro, video → công cụ phát hành.
+3. Kiểm chứng:
+   - 94 test xanh.
+   - Proof chạy lại test `phase-3` trên code mới.
+   - Proof chạy soak/bench đúng lệnh trong contract.
+   - Proof clone sạch rồi chạy 3 lệnh trong README.
+   - Playwright bấm thật trong trình duyệt và ghi lại: đổi phím, phụ đề, bảng xếp hạng, cỡ chữ.
+
+### Những lần AI sai và cách phát hiện
+
+| # | AI sai gì | Phát hiện bằng | Sửa và chỉnh harness |
+|---|---|---|---|
+| 21 | Soak lần đầu cho RSS 39 → 92 MB (vượt ngưỡng ×1,2). Agent định đi tìm chỗ rò bộ nhớ trong game | So heap JS (đứng yên khoảng 5 MB) với RSS; thử từng cờ V8 | Nguyên nhân là bộ nhớ biên dịch của JIT tối ưu V8. Soak tắt JIT tối ưu và ghi cả heap lẫn RSS; proof chạy đối chứng `--jit`. Thêm luật 10 vào `AGENTS.md` |
+| 22 | Trang bench gửi kết quả cả khi không chạy dưới `tools/bench.js`, nên console báo lỗi 404 và capture bị đánh trượt | Bộ kiểm tra lỗi console của capture | Chỉ gửi khi có `report=1` |
+| 23 | Đọc trạng thái rung camera ở một lệnh riêng, khung hình đã chạy chen vào giữa (đọc ra 0) | Số liệu "chuyển động bình thường" sai | Đọc trạng thái ngay trong lần gọi gây va chạm |
+| 24 | Bảng đổi phím 11 dòng tràn khỏi màn hình 1280×720, nút bị cắt | Xem ảnh capture | Chia lưới 2 cột |
+| 25 | Gọi `localStorage.clear()` khi trang còn là `about:blank` | SecurityError lúc chạy capture | Mở trang trước rồi mới xóa |
+| 26 | Còn chữ 12–16 px từ các phase trước (nhãn hồi chiêu, thanh dầu, `kbd`) | Rà theo yêu cầu ≥ 18 px | Nâng mọi cỡ chữ. Thêm test tĩnh chặn cỡ chữ < 18 px hoặc không theo `--ui-scale`, capture đo cỡ chữ nhỏ nhất ở từng màn |
+| 27 | Đồng hồ trong cảnh bench hiện "166666:38" (Đêm dài 10⁷ s) | Xem ảnh capture | Bench hiện nhãn giai đoạn riêng (khởi động / đo) |
+| 28 | Bench trong cửa sổ Xvfb có khung dừng hơn 10 s | Thêm `frame_ms_median/max`, `cpu_ms`; chạy đối chứng `--headless` | Do hàng đợi lệnh GPU của SwiftShader bị đầy, không phải do game. Ghi rõ trong phase-4 §4 |
+| 29 | `npm test` dùng glob `tests/*.test.js`, không chạy trên `cmd.exe` của Windows với Node 18/20 | Rà yêu cầu "clone sạch, 3 lệnh, chạy được" trên mọi hệ điều hành | Thêm `scripts/run-tests.js` tự liệt kê file test |
+| 30 | Lời dẫn Đêm 3 còn luật cũ "thắp đủ bảy ngọn đèn" từ Phase 2 | Đọc lại chữ trong game khi soát ảnh | Sửa theo luật bình minh |
+
+### Token và chi phí Phase 4 (ước tính thô)
+
+- Output: khoảng 70–90 nghìn token (code mới khoảng 1 600 dòng, tài liệu, retro).
+- Input tích lũy: khoảng 5–7 triệu token. Phase dài nhất nên ngữ cảnh lặp lại nhiều, phần lớn được cache.
+
+## Tổng cả dự án (ước tính thô)
+
+| Phase | Output (nghìn token) | Input tích lũy (triệu token) |
+|---|---|---|
+| 1 | 50–60 | 1,5–2,5 |
+| 2 | 90–110 | 3–4 |
+| 3 | 40–50 | 2–3 |
+| 4 | 70–90 | 5–7 |
+| **Tổng** | **khoảng 250–310** | **khoảng 12–16** |
+
+**Chi phí:** khoảng 12–16 triệu token input và 250–310 nghìn token output. Có 80–90 % input được đọc từ cache, chỉ tốn khoảng 1/10 giá. Tính theo giá API công khai của mô hình lớn, tổng chi phí cỡ vài chục USD. Dự án chạy trong gói thuê bao claude.ai nên không có hóa đơn riêng; con số này chỉ để so sánh.
+
+**Cách đã tiết kiệm token:**
+
+- Proof và capture là script: sinh lại bằng chứng không tốn token viết tay.
+- Sửa file bằng thay thế nhỏ có kiểm tra (script dừng nếu không tìm thấy đoạn cần sửa), không viết lại cả file.
+- Viết tiêu chí, giả định và ADR trước khi code, nên ít phải sửa đi sửa lại.
+- Đọc từng đoạn file cần thiết thay vì đọc cả file. Gom nhiều lệnh vào một lần gọi.
