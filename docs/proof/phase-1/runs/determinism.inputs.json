@@ -1,0 +1,24 @@
+{
+ "frames": [
+  {
+   "tick": 0,
+   "move": [
+    0.4,
+    1
+   ],
+   "cam_yaw_deg": 25
+  },
+  {
+   "tick": 300,
+   "move": [
+    -1,
+    0
+   ],
+   "pulse": true
+  },
+  {
+   "tick": 301,
+   "pulse": false
+  }
+ ]
+}

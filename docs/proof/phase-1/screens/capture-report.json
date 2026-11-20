@@ -1,0 +1,127 @@
+{
+  "when": "2026-11-20T14:31:50.396Z",
+  "viewport": "1280x720",
+  "shots": [
+    {
+      "file": "docs/proof/phase-1/screens/01-title.png",
+      "what": "Màn hình mở đầu: tên game, Đêm 1, điều khiển",
+      "mode": "title",
+      "tick": 0,
+      "state": "playing",
+      "score": 0,
+      "flames": 3,
+      "carried": 0,
+      "lit": [],
+      "result": null
+    },
+    {
+      "file": "docs/proof/phase-1/screens/02-playing.png",
+      "what": "Đang chơi: Mây đội nón lá có đèn, đom đóm, Bóng Mực, HUD",
+      "mode": "playing",
+      "tick": 209,
+      "state": "playing",
+      "score": 0,
+      "flames": 3,
+      "carried": 0,
+      "lit": [],
+      "result": null
+    },
+    {
+      "file": "docs/proof/phase-1/screens/03-before-last-lantern.png",
+      "what": "Đứng cạnh L1 với 5 đom đóm, các đèn khác đã sáng (đảo sáng lên)",
+      "mode": "playing",
+      "tick": 164,
+      "state": "playing",
+      "score": 0,
+      "flames": 3,
+      "carried": 5,
+      "lit": [
+        "L2",
+        "L3",
+        "L4",
+        "L5"
+      ],
+      "result": null
+    },
+    {
+      "file": "docs/proof/phase-1/screens/04-won.png",
+      "what": "Nạp ánh sáng vào L1 → thắng, màn hình kết quả + điểm",
+      "mode": "ended",
+      "tick": 180,
+      "state": "won",
+      "score": 844,
+      "flames": 3,
+      "carried": 0,
+      "lit": [
+        "L1",
+        "L2",
+        "L3",
+        "L4",
+        "L5"
+      ],
+      "result": {
+        "result": "won",
+        "reason": "all_lit",
+        "tick": 180
+      }
+    },
+    {
+      "file": "docs/proof/phase-1/screens/05-replay.png",
+      "what": "Chơi lại sau khi thắng (Enter)",
+      "mode": "playing",
+      "tick": 89,
+      "state": "playing",
+      "score": 0,
+      "flames": 3,
+      "carried": 5,
+      "lit": [
+        "L2",
+        "L3",
+        "L4",
+        "L5"
+      ],
+      "result": null
+    },
+    {
+      "file": "docs/proof/phase-1/screens/06-pulse.png",
+      "what": "Tỏa sáng: vòng sáng, Bóng Mực trong bán kính bị choáng và đẩy lùi",
+      "mode": "playing",
+      "tick": 164,
+      "state": "playing",
+      "score": 50,
+      "flames": 3,
+      "carried": 2,
+      "lit": [],
+      "result": null
+    },
+    {
+      "file": "docs/proof/phase-1/screens/07-lost.png",
+      "what": "Bị Bóng Mực chạm 3 lần → thua (no_flames)",
+      "mode": "ended",
+      "tick": 216,
+      "state": "lost",
+      "score": 0,
+      "flames": 0,
+      "carried": 1,
+      "lit": [],
+      "result": {
+        "result": "lost",
+        "reason": "no_flames",
+        "tick": 216
+      }
+    },
+    {
+      "file": "docs/proof/phase-1/screens/08-safe-zone.png",
+      "what": "Đứng trong vùng an toàn của L1: Bóng Mực dừng ở mép vòng",
+      "mode": "playing",
+      "tick": 355,
+      "state": "playing",
+      "score": 0,
+      "flames": 3,
+      "carried": 0,
+      "lit": [],
+      "result": null
+    }
+  ],
+  "problems": []
+}

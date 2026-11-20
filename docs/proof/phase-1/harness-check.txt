@@ -1,0 +1,31 @@
+# Harness check (real output, 2026-11-20T14:31:43Z)
+
+$ cat tests/zz-red.test.js   # a deliberately failing test, removed afterwards
+import test from 'node:test';
+import assert from 'node:assert/strict';
+test('deliberately red', () => assert.equal(1, 2));
+
+$ sh scripts/verify.sh --hook   # what the agent Stop hook runs
+not ok 49 - deliberately red
+# tests 49
+# pass 48
+# fail 1
+verify: tests are RED. Fix them before finishing (log: $TMPDIR/ddl-verify-tests.log).
+exit code: 2  (2 = Stop hook blocks the agent from finishing)
+
+$ git commit -m "try to commit while red"   # .githooks/pre-commit
+pre-commit: tests are failing, commit blocked. Last lines of $TMPDIR/ddl-pre-commit.log:
+    Expected values to be strictly equal:
+    
+    1 !== 2
+commit exit code: 1
+
+$ git log -1 --format=%s   # the red commit did not happen
+ci: run tests, headless smoke and determinism check on Node 18/20/22
+
+$ sh scripts/verify.sh --hook   # after removing the red test
+# tests 48
+# pass 48
+# fail 0
+headless smoke: {"type":"end","ticks":600,"state":"playing","score":0}
+exit code: 0
