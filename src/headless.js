@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-// Headless runner (Test Contract v1.0).
-//   node src/headless.js --seed <int> --night 1 [--scenario f.json] [--inputs f.json]
+// Headless runner (Test Contract v1.1).
+//   node src/headless.js --seed <int> --night 1|2|3 [--scenario f.json] [--inputs f.json]
 //                        --ticks <int> --out <file.jsonl> [--snapshot-every <int>]
 // Exit codes: 0 ok · 2 malformed scenario/inputs file · 1 any other error.
 
@@ -89,6 +89,7 @@ export function runHeadless(opts, tuning = loadTuning()) {
   const world = createWorld({ tuning, night: opts.night, seed: opts.seed, scenario });
 
   const lines = [JSON.stringify(snapshot(world))];
+  lines.push(JSON.stringify({ type: 'event', tick: 0, name: 'night_start', data: { night: opts.night } }));
   for (let k = 0; k < opts.ticks && world.state === 'playing'; k++) {
     const events = step(world, inputAt(k));
     for (const e of events) lines.push(JSON.stringify({ type: 'event', tick: e.tick, name: e.name, data: e.data }));

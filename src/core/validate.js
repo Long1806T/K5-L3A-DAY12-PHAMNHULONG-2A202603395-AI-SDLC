@@ -9,7 +9,9 @@ export class ContractInputError extends Error {
   }
 }
 
-const BUTTONS = ['jump', 'interact', 'pulse', 'dash'];
+const BUTTONS = ['jump', 'interact', 'pulse', 'dash', 'pause'];
+const SHADE_STATES = ['spawning', 'wander', 'chase', 'recoil', 'stunned'];
+const DRIFTER_STATES = ['idle', 'chase', 'flee'];
 
 const isObj = (v) => v !== null && typeof v === 'object' && !Array.isArray(v);
 const isNum = (v) => typeof v === 'number' && Number.isFinite(v);
@@ -72,9 +74,14 @@ export function validateScenario(doc, lanternIds, name = 'scenario') {
     if ('pos' in p) out.player.pos = vec3(p.pos, `${name}.player.pos`);
     if ('carried' in p) out.player.carried = nonNegInt(p.carried, `${name}.player.carried`);
     if ('flames' in p) out.player.flames = nonNegInt(p.flames, `${name}.player.flames`);
+    for (const k of ['invuln_ticks', 'dash_cd_ticks', 'pulse_cd_ticks', 'charm_ticks']) {
+      if (k in p) out.player[k] = nonNegInt(p[k], `${name}.player.${k}`);
+    }
   }
   if ('random_motes' in doc) out.random_motes = bool(doc.random_motes, `${name}.random_motes`);
   if ('random_shades' in doc) out.random_shades = bool(doc.random_shades, `${name}.random_shades`);
+  if ('random_drifters' in doc) out.random_drifters = bool(doc.random_drifters, `${name}.random_drifters`);
+  if ('wind_enabled' in doc) out.wind_enabled = bool(doc.wind_enabled, `${name}.wind_enabled`);
   if ('motes' in doc) {
     if (!Array.isArray(doc.motes)) fail(`${name}.motes`, 'must be an array');
     out.motes = doc.motes.map((m, i) => {
@@ -82,7 +89,17 @@ export function validateScenario(doc, lanternIds, name = 'scenario') {
       if (Array.isArray(m)) return { pos: vec3(m, where) };
       if (!isObj(m)) fail(where, 'must be [x, y, z] or {"id", "pos"}');
       if ('id' in m && typeof m.id !== 'string') fail(`${where}.id`, 'must be a string');
-      return { id: m.id, pos: vec3(m.pos, `${where}.pos`) };
+      const o = { id: m.id, pos: vec3(m.pos, `${where}.pos`) };
+      if ('kind' in m) {
+        if (!['random', 'dropped'].includes(m.kind)) fail(`${where}.kind`, 'must be "random" or "dropped"');
+        o.kind = m.kind;
+      }
+      if ('ttl_ticks' in m) o.ttl_ticks = nonNegInt(m.ttl_ticks, `${where}.ttl_ticks`);
+      if ('ttl_s' in m && m.ttl_s !== null) {
+        if (!isNum(m.ttl_s) || m.ttl_s < 0) fail(`${where}.ttl_s`, 'must be a number >= 0');
+        o.ttl_ticks = Math.round(m.ttl_s * 60);
+      }
+      return o;
     });
   }
   if ('shades' in doc) {
@@ -91,10 +108,48 @@ export function validateScenario(doc, lanternIds, name = 'scenario') {
       const where = `${name}.shades[${i}]`;
       if (!isObj(s)) fail(where, 'must be an object with "pos"');
       if ('id' in s && typeof s.id !== 'string') fail(`${where}.id`, 'must be a string');
-      return { id: s.id, pos: vec3(s.pos, `${where}.pos`) };
+      const o = { id: s.id, pos: vec3(s.pos, `${where}.pos`) };
+      if ('state' in s) {
+        if (!SHADE_STATES.includes(s.state)) fail(`${where}.state`, `must be one of ${SHADE_STATES.join(', ')}`);
+        o.state = s.state;
+      }
+      if ('state_ticks_left' in s) o.state_ticks_left = nonNegInt(s.state_ticks_left, `${where}.state_ticks_left`);
+      return o;
     });
     const ids = out.shades.map((s) => s.id).filter((id) => id !== undefined);
     if (new Set(ids).size !== ids.length) fail(`${name}.shades`, 'ids must be unique');
+  }
+  if ('drifters' in doc) {
+    if (!Array.isArray(doc.drifters)) fail(`${name}.drifters`, 'must be an array');
+    out.drifters = doc.drifters.map((d, i) => {
+      const where = `${name}.drifters[${i}]`;
+      if (!isObj(d)) fail(where, 'must be an object with "pos"');
+      if ('id' in d && typeof d.id !== 'string') fail(`${where}.id`, 'must be a string');
+      const o = { id: d.id, pos: vec3(d.pos, `${where}.pos`) };
+      if ('state' in d) {
+        if (!DRIFTER_STATES.includes(d.state)) fail(`${where}.state`, `must be one of ${DRIFTER_STATES.join(', ')}`);
+        o.state = d.state;
+      }
+      if ('stolen' in d) o.stolen = nonNegInt(d.stolen, `${where}.stolen`);
+      if ('state_ticks_left' in d) o.state_ticks_left = nonNegInt(d.state_ticks_left, `${where}.state_ticks_left`);
+      return o;
+    });
+  }
+  if ('charms' in doc) {
+    if (!Array.isArray(doc.charms)) fail(`${name}.charms`, 'must be an array');
+    out.charms = doc.charms.map((c, i) => {
+      const where = `${name}.charms[${i}]`;
+      if (!isObj(c) || typeof c.id !== 'string') fail(where, 'must be an object with a string "id"');
+      const o = { id: c.id };
+      if ('pos' in c) o.pos = vec3(c.pos, `${where}.pos`);
+      if ('available' in c) o.available = bool(c.available, `${where}.available`);
+      if ('respawn_ticks' in c) o.respawn_ticks = nonNegInt(c.respawn_ticks, `${where}.respawn_ticks`);
+      if ('respawn_s' in c) {
+        if (!isNum(c.respawn_s) || c.respawn_s < 0) fail(`${where}.respawn_s`, 'must be a number >= 0');
+        o.respawn_ticks = Math.round(c.respawn_s * 60);
+      }
+      return o;
+    });
   }
   if ('lanterns' in doc) {
     if (!Array.isArray(doc.lanterns)) fail(`${name}.lanterns`, 'must be an array');

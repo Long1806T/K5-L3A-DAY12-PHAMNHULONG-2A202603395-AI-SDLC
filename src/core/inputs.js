@@ -3,7 +3,7 @@
 // A frame only changes the fields it contains.
 
 export function defaultInput() {
-  return { move: [0, 0], cam_yaw_deg: 0, jump: false, interact: false, pulse: false, dash: false };
+  return { move: [0, 0], cam_yaw_deg: 0, jump: false, interact: false, pulse: false, dash: false, pause: false };
 }
 
 export function createInputTimeline(frames = []) {
@@ -18,7 +18,7 @@ export function createInputTimeline(frames = []) {
       const f = frames[idx++];
       if (f.move) cur.move = [f.move[0], f.move[1]];
       if (f.cam_yaw_deg !== undefined) cur.cam_yaw_deg = f.cam_yaw_deg;
-      for (const b of ['jump', 'interact', 'pulse', 'dash']) if (f[b] !== undefined) cur[b] = f[b];
+      for (const b of ['jump', 'interact', 'pulse', 'dash', 'pause']) if (f[b] !== undefined) cur[b] = f[b];
     }
     return { ...cur, move: [cur.move[0], cur.move[1]] };
   };
