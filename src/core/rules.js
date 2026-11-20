@@ -37,6 +37,10 @@ export const RULES = Object.freeze({
   shadeHover: 1.0,
   shadeWanderSpeed: 2.0,
   safeExpelTicks: 30,
+  // fuel (Ticket-03)
+  drainRange: 2, // a wandering shade within 2 m of a weak lantern starts draining
+  drainChase: 6, // a draining shade chases Mây once she is within 6 m
+  capacityPerLight: 2, // capacity = carry_capacity + 2 × successful lights (≤ capacity_max)
   // drifters (Gió Lạc)
   drifterSpeed: 7,
   drifterIdleSpeed: 2,

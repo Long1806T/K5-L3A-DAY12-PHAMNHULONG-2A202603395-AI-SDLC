@@ -10,7 +10,7 @@ export class ContractInputError extends Error {
 }
 
 const BUTTONS = ['jump', 'interact', 'pulse', 'dash', 'pause'];
-const SHADE_STATES = ['spawning', 'wander', 'chase', 'recoil', 'stunned'];
+const SHADE_STATES = ['spawning', 'wander', 'chase', 'recoil', 'stunned', 'drain'];
 const DRIFTER_STATES = ['idle', 'chase', 'flee'];
 
 const isObj = (v) => v !== null && typeof v === 'object' && !Array.isArray(v);
@@ -74,7 +74,7 @@ export function validateScenario(doc, lanternIds, name = 'scenario') {
     if ('pos' in p) out.player.pos = vec3(p.pos, `${name}.player.pos`);
     if ('carried' in p) out.player.carried = nonNegInt(p.carried, `${name}.player.carried`);
     if ('flames' in p) out.player.flames = nonNegInt(p.flames, `${name}.player.flames`);
-    for (const k of ['invuln_ticks', 'dash_cd_ticks', 'pulse_cd_ticks', 'charm_ticks']) {
+    for (const k of ['invuln_ticks', 'dash_cd_ticks', 'pulse_cd_ticks', 'charm_ticks', 'successful_lights']) {
       if (k in p) out.player[k] = nonNegInt(p[k], `${name}.player.${k}`);
     }
   }
@@ -114,6 +114,10 @@ export function validateScenario(doc, lanternIds, name = 'scenario') {
         o.state = s.state;
       }
       if ('state_ticks_left' in s) o.state_ticks_left = nonNegInt(s.state_ticks_left, `${where}.state_ticks_left`);
+      if ('target_lantern_id' in s) {
+        if (typeof s.target_lantern_id !== 'string' || !lanternIds.includes(s.target_lantern_id)) fail(`${where}.target_lantern_id`, `must be one of ${lanternIds.join(', ')}`);
+        o.target_lantern_id = s.target_lantern_id;
+      }
       return o;
     });
     const ids = out.shades.map((s) => s.id).filter((id) => id !== undefined);
@@ -161,6 +165,11 @@ export function validateScenario(doc, lanternIds, name = 'scenario') {
       if ('pos' in l) o.pos = vec3(l.pos, `${where}.pos`);
       if ('deposited' in l) o.deposited = nonNegInt(l.deposited, `${where}.deposited`);
       if ('lit' in l) o.lit = bool(l.lit, `${where}.lit`);
+      if ('ever_lit' in l) o.ever_lit = bool(l.ever_lit, `${where}.ever_lit`);
+      if ('fuel' in l) {
+        if (!isNum(l.fuel) || l.fuel < 0) fail(`${where}.fuel`, 'must be a number >= 0');
+        o.fuel = l.fuel;
+      }
       return o;
     });
   }

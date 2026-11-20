@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Headless runner (Test Contract v1.1).
+// Headless runner (Test Contract v1.2).
 //   node src/headless.js --seed <int> --night 1|2|3 [--scenario f.json] [--inputs f.json]
 //                        --ticks <int> --out <file.jsonl> [--snapshot-every <int>]
 // Exit codes: 0 ok · 2 malformed scenario/inputs file · 1 any other error.

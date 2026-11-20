@@ -3,7 +3,7 @@
 // contract "frames" it pressed, so the run can be replayed by the headless CLI.
 // Navigation is naive: good enough for Night 1 and Night 2 (bridge waypoints).
 
-import { createWorld, step, distXZ } from '../src/core/sim.js';
+import { createWorld, step, distXZ, capacity, lightCost, FUEL_UNITS } from '../src/core/sim.js';
 
 const round2 = (x) => Math.round(x * 100) / 100 || 0;
 
@@ -31,26 +31,36 @@ function decide(w) {
   const T = w.T;
   const p = w.player;
   const threats = w.shades
-    .filter((s) => s.state === 'chase' || s.state === 'wander')
+    .filter((s) => ['chase', 'wander', 'drain'].includes(s.state))
     .map((s) => ({ s, d: distXZ(s.pos, p.pos) }))
     .filter((x) => x.d < 6)
     .sort((a, b) => a.d - b.d);
 
   const canPulse = !w.prev.pulse && p.pulseCd === 0 && p.carried >= T.pulse_cost;
-  const pulse = Boolean(canPulse && threats[0] && threats[0].d < 2.4 && threats[0].s.state === 'chase');
+  const pulse = Boolean(canPulse && threats[0] && threats[0].d < 2.4 && ['chase', 'drain'].includes(threats[0].s.state));
 
-  const unlit = w.lanterns.filter((l) => !l.lit);
-  let lantern = null;
-  for (const l of unlit) if (!lantern || distXZ(l.pos, p.pos) < distXZ(lantern.pos, p.pos)) lantern = l;
-  const need = lantern ? T.lantern_cost - lantern.deposited : Infinity;
-  const enough = Math.min(need, T.carry_capacity);
-  const wantDeposit = lantern && (p.carried >= enough || (p.carried > 0 && w.motes.length === 0));
+  // Phase 3 strategy: relighting (5 motes → 100 fuel) is cheaper than refuelling (10 motes → 100 fuel),
+  // so keep threshold + 1 lanterns lit by lighting/relighting and only top up when dawn is close.
+  const fuel = (l) => l.fuel / FUEL_UNITS;
+  const byDist = (a, b) => distXZ(a.pos, p.pos) - distXZ(b.pos, p.pos);
+  const cap = capacity(w);
+  const timeLeft = w.timeLeftAtStart - w.simTick / 60;
+  const want = Math.ceil(T.win_ratio * w.lanterns.length) + 1;
+  const litCount = w.lanterns.filter((l) => l.lit).length;
+  const unlit = w.lanterns.filter((l) => !l.lit).sort(byDist);
+  const dying = w.lanterns.filter((l) => l.lit && fuel(l) < Math.min(timeLeft + 2, 40)).sort(byDist);
+  let goal = null;
+  if (litCount < want && unlit.length && p.carried >= Math.min(cap, lightCost(T, unlit[0]) - unlit[0].deposited)) goal = unlit[0];
+  else if (timeLeft < 60 && dying.length && p.carried >= 1) goal = dying[0];
+  else if (p.carried >= cap && unlit.length) goal = unlit[0];
 
   let target = null;
   let interact = false;
-  if (wantDeposit) {
-    target = lantern.pos;
-    if (distXZ(lantern.pos, p.pos) <= T.interact_radius - 0.3) interact = !w.prev.interact;
+  let pulseDrain = false;
+  if (goal) {
+    target = goal.pos;
+    if (distXZ(goal.pos, p.pos) <= T.interact_radius - 0.3) interact = !w.prev.interact;
+    pulseDrain = w.shades.some((s) => s.state === 'drain' && distXZ(s.pos, p.pos) < 4.5);
   } else if (w.motes.length) {
     let best = null;
     let bestCost = Infinity;
@@ -63,10 +73,9 @@ function decide(w) {
         best = m;
       }
     }
-    target = best ? best.pos : lantern && lantern.pos;
-  } else if (lantern) {
-    target = lantern.pos;
+    target = best ? best.pos : null;
   }
+  const pulseNow = pulse || Boolean(canPulse && pulseDrain);
 
   let dx = 0;
   let dz = 0;
@@ -92,7 +101,7 @@ function decide(w) {
     dx /= len;
     dz /= len;
   }
-  return { move: [round2(dx), round2(dz)], cam_yaw_deg: 0, jump: false, interact, pulse, dash: false, pause: false };
+  return { move: [round2(dx), round2(dz)], cam_yaw_deg: 0, jump: false, interact, pulse: pulseNow, dash: false, pause: false };
 }
 
 /** Plays a night; returns the recorded contract frames and the final world. */
