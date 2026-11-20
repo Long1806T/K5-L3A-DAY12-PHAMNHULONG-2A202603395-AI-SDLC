@@ -23,6 +23,15 @@
   .flame.off svg { fill: #3a3346; filter: none; }
   #clock { font-size: calc(30px * var(--ui-scale)); font-weight: 700; letter-spacing: 1px; font-variant-numeric: tabular-nums; }
   .danger { color: var(--danger); }
+  body.cb { --danger: #FFFFFF; --rim: #00B3FF; } /* colour-blind palette (Ticket-03) */
+  .lan-count small { font-size: 15px; opacity: .8; }
+  .lan-count.short small { color: var(--danger); opacity: 1; }
+  .fuel { position: absolute; transform: translate(-50%, -100%); width: 60px; height: 9px; border-radius: 5px; background: #0009; border: 1px solid #ffffff55; }
+  .fuel i { display: block; height: 100%; border-radius: 4px; background: linear-gradient(90deg, #ffb347, #ffe9b0); }
+  .fuel span { position: absolute; left: 50%; top: -20px; transform: translateX(-50%); font-size: 13px; white-space: nowrap; }
+  .fuel.low { border-color: var(--danger); animation: blink 1s steps(2, start) infinite; } /* 1 Hz */
+  .fuel.low i { background: var(--danger); }
+  .fuel.low span { color: var(--danger); }
   .blink { animation: blink 1s steps(2, start) infinite; }
   @keyframes blink { to { visibility: hidden; } }
   #lanterns { display: flex; gap: 14px; align-items: center; font-size: calc(20px * var(--ui-scale)); }
@@ -85,6 +94,7 @@
   <div class="tr"><div id="lanterns"></div></div>
   <div class="bc"><div id="prompt"></div><div id="motebar"></div></div>
   <div class="br"><div id="cds"></div></div>
+  <div id="fuelbars"></div>
   <div id="arrow"></div>
   <div id="toast"></div>
   <div id="seed"></div>

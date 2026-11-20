@@ -2,7 +2,7 @@
 // lanterns + score top-right, 10-slot mote bar bottom-centre, dash/pulse
 // cooldowns bottom-right, a lantern prompt and an off-screen lantern arrow.
 
-import { distXZ, timeLeftExact } from '../core/sim.js';
+import { distXZ, timeLeftExact, isWeak, lightCost, fuelValue, winThreshold, capacity, FUEL_UNITS } from '../core/sim.js';
 
 const FLAME_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2c-1 4-6 7-6 12a6 6 0 0 0 12 0c0-3-1.6-5-3-6.5.2 2-1 3.5-2.4 3.5C14 8 13.5 5 12 2z"/></svg>';
 const $ = (id) => document.getElementById(id);
@@ -36,11 +36,11 @@ export class Hud {
     el.classList.add('on');
   }
 
-  /** Nearest lantern the player can still put light into (unlit, or not full when fuel exists). */
+  /** Nearest lantern that needs light: unlit, or lit but weak (fuel < 30). */
   static targetLantern(world) {
     let best = null;
     for (const L of world.lanterns) {
-      if (L.lit) continue;
+      if (L.lit && !isWeak(world, L)) continue;
       if (!best || distXZ(L.pos, world.player.pos) < distXZ(best.pos, world.player.pos)) best = L;
     }
     return best;
@@ -59,9 +59,10 @@ export class Hud {
     this.set('clock', `<span class="${tl <= 30 ? 'danger blink' : ''}">${tl <= 30 ? '⚠ ' : ''}${clock}</span>`);
 
     const lit = world.lanterns.filter((l) => l.lit).length;
-    this.set('lanterns', `<span class="lan-count">🏮 ${lit}/${world.lanterns.length}</span><span class="score">${world.score}</span>`);
+    const need = winThreshold(world);
+    this.set('lanterns', `<span class="lan-count ${lit < need ? 'short' : ''}">🏮 ${lit}/${world.lanterns.length} <small>(cần ${need})</small></span><span class="score">${world.score}</span>`);
 
-    const cap = world.player.capacity ?? T.carry_capacity;
+    const cap = capacity(world);
     let bar = '';
     for (let i = 0; i < cap; i++) bar += `<span class="slot ${i < p.carried ? 'on' : ''}"></span>`;
     this.set('motebar', `${bar}<b>${p.carried}/${cap}</b>`);
@@ -77,12 +78,46 @@ export class Hud {
     if (world.state === 'playing' && !world.paused && p.dead === 0) {
       let near = null;
       for (const L of world.lanterns) {
-        if (L.lit || distXZ(L.pos, p.pos) > T.interact_radius) continue;
+        if ((L.lit && L.fuel >= T.fuel_max * FUEL_UNITS) || distXZ(L.pos, p.pos) > T.interact_radius) continue;
         if (!near || distXZ(L.pos, p.pos) < distXZ(near.pos, p.pos)) near = L;
       }
-      if (near) prompt = `<kbd>E</kbd> — Nạp ánh sáng (${near.deposited}/${T.lantern_cost})`;
+      if (near && !near.lit) prompt = `<kbd>E</kbd> — ${near.everLit ? 'Thắp lại' : 'Nạp ánh sáng'} (${near.deposited}/${lightCost(T, near)})`;
+      else if (near) prompt = `<kbd>E</kbd> — Châm dầu (${Math.floor(fuelValue(near))}/${T.fuel_max})`;
     }
     this.set('prompt', prompt);
+
+    // fuel bars above lit lanterns (blink at 1 Hz below 30)
+    const bars = $('fuelbars');
+    for (const L of world.lanterns) {
+      let el = bars.querySelector(`[data-l="${L.id}"]`);
+      if (!el) {
+        el = document.createElement('div');
+        el.className = 'fuel';
+        el.dataset.l = L.id;
+        el.innerHTML = '<i></i><span></span>';
+        bars.appendChild(el);
+      }
+      let show = false;
+      if (L.lit && view && world.state === 'playing') {
+        const m = view.viewProj;
+        const P = [L.pos[0], L.pos[1] + 5.6, L.pos[2]];
+        const cw = m[3] * P[0] + m[7] * P[1] + m[11] * P[2] + m[15];
+        if (cw > 0) {
+          const nx = (m[0] * P[0] + m[4] * P[1] + m[8] * P[2] + m[12]) / cw;
+          const ny = (m[1] * P[0] + m[5] * P[1] + m[9] * P[2] + m[13]) / cw;
+          if (Math.abs(nx) < 1 && Math.abs(ny) < 1 && cw < 70) {
+            show = true;
+            el.style.left = `${((nx + 1) / 2) * window.innerWidth}px`;
+            el.style.top = `${((1 - ny) / 2) * window.innerHeight}px`;
+            const f = fuelValue(L);
+            el.firstChild.style.width = `${Math.max(0, Math.min(100, f))}%`;
+            el.lastChild.textContent = isWeak(world, L) ? `⚠ ${Math.floor(f)}` : `${Math.floor(f)}`;
+            el.classList.toggle('low', isWeak(world, L));
+          }
+        }
+      }
+      el.style.display = show ? '' : 'none';
+    }
 
     // arrow to the nearest unlit lantern when it is off screen
     const arrow = $('arrow');

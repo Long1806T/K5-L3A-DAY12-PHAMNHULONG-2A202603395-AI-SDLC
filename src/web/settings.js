@@ -5,6 +5,7 @@ const KEY = 'ddl.settings.v1';
 export const DEFAULT_SETTINGS = Object.freeze({
   volume: 0.7, // 0..1
   sensitivity: 1.0, // mouse look multiplier
+  colorBlind: false, // "Bảng màu dễ phân biệt" (Ticket-03)
 });
 
 export function loadSettings() {

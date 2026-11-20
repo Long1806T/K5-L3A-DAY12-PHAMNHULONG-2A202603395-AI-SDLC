@@ -19,7 +19,7 @@ const fixedSeed = params.get('seed');
 const newSeed = () => fixedSeed ?? String(Math.floor(Math.random() * 1e9)); // seed choice only; the game itself is seeded
 
 const STORY = {
-  1: ['Đảo Bến', 'Mây ơi, sương đen nuốt mất bến thuyền rồi. Con gom đom đóm, thắp lại năm Đèn Lồng Lớn nhé. Bóng Mực sợ ánh đèn đã sáng.'],
+  1: ['Đảo Bến', 'Mây ơi, sương đen nuốt mất bến thuyền rồi. Con gom đom đóm thắp đèn, và nhớ châm dầu: đèn cạn là tắt. Giữ cho đảo sáng tới bình minh nhé.'],
   2: ['Đảo Cau', 'Hai đảo cau nối nhau bằng cây cầu tre, không có lan can đâu con. Bục nhảy sẽ đưa con qua biển mây. Coi chừng Gió Lạc, chúng mê đom đóm lắm.'],
   3: ['Đảo Chuông', 'Đảo Chuông có ba tầng, tháp chuông ở giữa. Gió mạnh thổi từng cơn: thấy lá bay là gió sắp tới. Thắp đủ bảy ngọn đèn là bình minh về.'],
 };
@@ -41,6 +41,8 @@ const settings = loadSettings();
 const applySettings = () => {
   audio.setVolume(settings.volume);
   controls.sensitivity = settings.sensitivity;
+  scene.options.colorBlind = settings.colorBlind;
+  document.body.classList.toggle('cb', settings.colorBlind);
 };
 applySettings();
 
@@ -74,6 +76,7 @@ function newWorld(night) {
   acc = 0;
   camTarget = [...world.player.pos];
   controls.yawDeg = Number(params.get('yaw') || 0);
+  if (params.get('dist')) controls.dist = Math.min(18, Math.max(5, Number(params.get('dist')))); // dev: camera distance
   lastCountdown = -1;
   windWarned = false;
   jumps = 0;
@@ -120,7 +123,7 @@ function showIntro(night) {
     <p class="sub">Đêm ${night}</p>
     <h1>${name}</h1>
     <div class="story"><b>Ông Đăng:</b> “${words}”</div>
-    <p class="small">${world.lanterns.length} Đèn Lồng Lớn · ${Math.round(timeLeftExact(world) / 6) / 10} phút tới bình minh</p>
+    <p class="small">${world.lanterns.length} Đèn Lồng Lớn · giữ ít nhất ${Math.ceil(tuning.win_ratio * world.lanterns.length - 1e-9)} đèn sáng tới bình minh (${Math.round(timeLeftExact(world) / 6) / 10} phút). Đèn cạn dầu sẽ tắt; Bóng Mực hút dầu đèn yếu.</p>
     <button data-act="start">Bắt đầu (Enter)</button>`);
 }
 
@@ -164,6 +167,7 @@ function showSettings() {
     <h1>Cài đặt</h1>
     <label class="field">Âm lượng <input id="vol" type="range" min="0" max="100" value="${Math.round(settings.volume * 100)}"><output id="volv">${Math.round(settings.volume * 100)}</output></label>
     <label class="field">Độ nhạy chuột <input id="sens" type="range" min="20" max="300" value="${Math.round(settings.sensitivity * 100)}"><output id="sensv">${settings.sensitivity.toFixed(2)}</output></label>
+    <label class="field">Bảng màu dễ phân biệt <input id="cb" type="checkbox" ${settings.colorBlind ? 'checked' : ''}></label>
     <p class="small">Cài đặt được lưu tự động và giữ cho lần mở sau.</p>
     <button data-act="back">Xong</button>`);
   $('vol').oninput = (e) => {
@@ -173,6 +177,11 @@ function showSettings() {
     saveSettings(settings);
     audio.unlock();
     audio.play('click');
+  };
+  $('cb').onchange = (e) => {
+    settings.colorBlind = e.target.checked;
+    applySettings();
+    saveSettings(settings);
   };
   $('sens').oninput = (e) => {
     settings.sensitivity = Number(e.target.value) / 100;
@@ -199,7 +208,7 @@ function endNight() {
     <h1 class="${won ? 'won' : 'lost'}">${won ? 'Thắng Đêm!' : 'Thua Đêm'}</h1>
     <p>${reason}</p>
     <p class="big">${world.score} điểm</p>
-    <p class="small">Đom đóm nạp ${s.motesDeposited} · Đèn thắp ${s.lanternsLit} · Trúng Tỏa Sáng ${s.stuns} · Lửa còn ${world.player.flames}</p>
+    <p class="small">Đèn sáng lúc kết thúc ${world.lanterns.filter((l) => l.lit).length}/${world.lanterns.length} · Đom đóm nạp ${s.motesDeposited} · Lần thắp ${s.lanternsLit} · Trúng Tỏa Sáng ${s.stuns} · Lửa còn ${world.player.flames}</p>
     <p class="small">Tổng điểm các Đêm đã thắng: <b class="gold">${campaign.total}</b></p>
     <div class="menu">
       ${won ? `<button data-act="${lastNight ? 'dawn' : 'next'}">${lastNight ? 'Đón Bình Minh' : `Sang Đêm ${world.night + 1}`}</button>` : '<button data-act="restart">Chơi lại Đêm</button>'}
@@ -262,7 +271,7 @@ function handle(events, now) {
       }
       case 'lantern_lit':
         audio.play('lit');
-        hud.toast(`Đèn ${e.data.lantern_id} đã sáng!`, now);
+        hud.toast(e.data.relight ? `Đèn ${e.data.lantern_id} sáng lại!` : `Đèn ${e.data.lantern_id} đã sáng!`, now);
         hud.flash('rgba(255,179,71,0.3)');
         break;
       case 'pulse':
@@ -273,7 +282,7 @@ function handle(events, now) {
         audio.play('hit');
         hud.flash('rgba(90,20,140,0.5)');
         shake = 0.35;
-        hud.toast(e.data.by === 'fall' ? 'Rơi khỏi đảo! Mất hết đom đóm.' : e.data.dropped ? `Bị chạm! Rơi ${e.data.dropped} đom đóm` : 'Bị chạm!', now, 1.6);
+        hud.toast(`⚠ ${e.data.by === 'fall' ? 'Rơi khỏi đảo! Mất hết đom đóm.' : e.data.dropped ? `Bị chạm! Rơi ${e.data.dropped} đom đóm` : 'Bị chạm!'}`, now, 1.6);
         break;
       case 'shade_spawned':
         audio.play('shade');
@@ -289,6 +298,16 @@ function handle(events, now) {
       case 'drifter_steal':
         audio.play('steal');
         hud.toast(`Gió Lạc cướp ${e.data.amount} đom đóm!`, now, 1.8);
+        break;
+      case 'lantern_out':
+        audio.play('out');
+        hud.toast(`⚠ Đèn ${e.data.lantern_id} đã tắt: thắp lại chỉ cần ${tuning.relight_cost} đom đóm`, now, 2.4);
+        break;
+      case 'refuel':
+        audio.play('refuel');
+        break;
+      case 'fuel_drain':
+        if (e.data.fuel < 20) hud.toast(`⚠ Bóng Mực đang hút dầu đèn ${e.data.lantern_id} (${Math.floor(e.data.fuel)})`, now, 1.8);
         break;
       case 'drifter_drop':
         hud.toast(`Gió Lạc đánh rơi ${e.data.amount} đom đóm`, now, 1.8);
