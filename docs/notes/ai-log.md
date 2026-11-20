@@ -103,6 +103,7 @@ Cách tiết kiệm đã dùng:
 | 17 | Test bot vẫn đòi đủ 5 đèn sáng (luật Phase 2) | Test đỏ | Sửa theo luật bình minh, kèm `P3:` |
 | 18 | HUD tự tính lại sức chứa thay vì dùng hàm của core (luật bị viết hai nơi) | Review diff | Dùng `capacity()` của core. Thêm vào `AGENTS.md`: luật dùng chung chỉ viết một lần |
 | 19 | Scenario đo tốc độ "đứng trong vùng an toàn" của Phase 2 không còn sống hết đêm vì đèn cạn dầu | Mây chết ở tick 5107 khi chạy thử | Scenario mới cho Mây 999 lửa. Sửa luật 7 trong `AGENTS.md` |
+| 20 | Bước "chạy test Phase 2 trên code Phase 3" trong `proof.js` chép thiếu `index.html`, nên test bảng màu đỏ oan (13 test đỏ thay vì 12) | So với lần chạy tay bằng `git worktree` (12 test đỏ) | Chép thêm `index.html`. Bài học: công cụ sinh bằng chứng cũng cần được đối chiếu với một lần chạy độc lập |
 
 ### Token và chi phí Phase 3 (ước tính thô)
 
