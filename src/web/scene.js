@@ -1,18 +1,12 @@
 // Draws one frame of the world. Reads core state only (never mutates it).
 
-import { m4, compose, mix3, transformPoint } from './mathx.js';
-import { islandModel, lanternModel, moteModel, shadeModel, playerModel } from './meshes.js';
+import { m4, compose, transformPoint } from './mathx.js';
+import { sceneryModel, lanternModel, lanternPaperModel, moteModel, shadeModel, playerModel, ribbonModel, charmModel } from './meshes.js';
+import { RGB, ambientIntensity } from './palette.js';
+import { windAt } from '../core/sim.js';
 import { createRng } from '../core/rng.js';
 
-const NIGHT = {
-  sky: [0.1, 0.1, 0.24], ground: [0.04, 0.03, 0.07], moonCol: [0.2, 0.22, 0.36],
-  fogCol: [0.05, 0.035, 0.1], fogDensity: 0.02,
-};
-const LIT = {
-  sky: [0.32, 0.26, 0.34], ground: [0.13, 0.09, 0.07], moonCol: [0.3, 0.27, 0.32],
-  fogCol: [0.17, 0.11, 0.14], fogDensity: 0.011,
-};
-const WARM = [1.0, 0.6, 0.28];
+const WARM = RGB.lanternLit;
 
 function hash01(text) {
   let h = 0;
@@ -21,18 +15,21 @@ function hash01(text) {
 }
 
 export class Scene {
-  constructor(renderer, level, tuning) {
+  constructor(renderer) {
     this.r = renderer;
-    this.level = level;
-    this.T = tuning;
-    this.island = renderer.upload(islandModel(level));
     this.lantern = renderer.upload(lanternModel());
+    this.paper = renderer.upload(lanternPaperModel());
     this.mote = renderer.upload(moteModel());
     this.shade = renderer.upload(shadeModel());
+    this.shadeStunned = renderer.upload(shadeModel(RGB.shadeRim, RGB.shadeStunned));
+    this.ribbon = renderer.upload(ribbonModel());
+    this.charm = renderer.upload(charmModel());
     const pm = playerModel();
     this.player = renderer.upload(pm.mesh);
     this.playerLanternLocal = pm.lanternLocal;
-    this.glowLevel = 0; // smoothed "how lit is the island"
+    this.scenery = new Map();
+    this.trails = new Map();
+    this.options = { colorBlind: false };
     const rng = createRng('stars');
     this.stars = [];
     for (let i = 0; i < 160; i++) {
@@ -43,117 +40,186 @@ export class Scene {
     }
   }
 
-  /** view = { yawDeg, dist, target }, fx = active effects, time = seconds (visual only) */
+  sceneryFor(level) {
+    if (!this.scenery.has(level.id)) this.scenery.set(level.id, this.r.upload(sceneryModel(level)));
+    return this.scenery.get(level.id);
+  }
+
+  /** view = { yawDeg, dist, target, eye? }, fx = active effects, time = seconds (visual only) */
   draw(world, view, fx, time, aspect) {
-    const T = this.T;
+    const T = world.T;
     const p = world.player;
+    const lv = world.level;
     const litCount = world.lanterns.filter((l) => l.lit).length;
-    this.glowLevel += (litCount / world.lanterns.length - this.glowLevel) * 0.03;
-    const k = this.glowLevel;
+    const amb = ambientIntensity(litCount, world.lanterns.length);
     const env = {
-      sky: mix3(NIGHT.sky, LIT.sky, k),
-      ground: mix3(NIGHT.ground, LIT.ground, k),
+      clearCol: RGB.sky,
+      sky: [0.62 * amb * 1.6, 0.66 * amb * 1.6, 0.95 * amb * 1.6],
+      ground: [0.3 * amb, 0.24 * amb, 0.22 * amb],
       moonDir: [-0.35, -0.85, -0.4],
-      moonCol: mix3(NIGHT.moonCol, LIT.moonCol, k),
-      fogCol: mix3(NIGHT.fogCol, LIT.fogCol, k),
-      fogDensity: NIGHT.fogDensity + (LIT.fogDensity - NIGHT.fogDensity) * k,
+      moonCol: [0.16, 0.18, 0.3],
+      fogCol: RGB.fog,
+      fogDensity: 0.02 - 0.008 * (litCount / world.lanterns.length),
     };
 
-    // camera: behind the player along the camera yaw (forward = (sin, cos))
-    const yaw = (view.yawDeg * Math.PI) / 180;
-    const fwd = [Math.sin(yaw), 0, Math.cos(yaw)];
-    const target = [view.target[0], view.target[1] + 1.3, view.target[2]];
-    const eye = [target[0] - fwd[0] * view.dist, target[1] + 2.2 + view.dist * 0.33, target[2] - fwd[2] * view.dist];
+    let eye;
+    let target;
+    if (view.eye) {
+      eye = view.eye;
+      target = view.target;
+    } else {
+      const yaw = (view.yawDeg * Math.PI) / 180;
+      target = [view.target[0], view.target[1] + 1.3, view.target[2]];
+      eye = [target[0] - Math.sin(yaw) * view.dist, target[1] + 2.2 + view.dist * 0.33, target[2] - Math.cos(yaw) * view.dist];
+    }
     const viewM = m4.lookAt(eye, target, [0, 1, 0]);
     const proj = m4.perspective((55 * Math.PI) / 180, aspect, 0.1, 700);
     const viewProj = m4.mul(proj, viewM);
     const camRight = [viewM[0], viewM[4], viewM[8]];
     const camUp = [viewM[1], viewM[5], viewM[9]];
 
-    // lights: lit lanterns, partially filled lanterns, Mây's lantern, pulse flash
-    const lights = [];
-    for (const L of world.lanterns) {
-      const fill = L.lit ? 1 : Math.min(1, L.deposited / T.lantern_cost) * 0.35;
-      if (fill <= 0) continue;
-      const flick = 1 + Math.sin(time * 7 + hash01(L.id) * 9) * 0.04;
-      lights.push({ pos: [L.pos[0], 4.2, L.pos[2]], col: WARM.map((c) => c * 2.1 * fill * flick), range: L.lit ? 19 : 7 });
-    }
     const playerM = compose(m4.translate(p.pos[0], p.pos[1], p.pos[2]), m4.rotY(p.facing), m4.scale(0.9));
     const lamp = transformPoint(playerM, this.playerLanternLocal);
-    lights.push({ pos: lamp, col: WARM.map((c) => c * (0.95 + p.carried * 0.07)), range: 6.5 + p.carried * 0.45 });
-    for (const e of fx) if (e.kind === 'pulse') lights.push({ pos: [e.pos[0], 1.5, e.pos[2]], col: [1.6 * e.left, 1.2 * e.left, 0.55 * e.left], range: T.pulse_radius * 1.8 });
+    const lights = [{ pos: lamp, col: WARM.map((c) => c * (0.95 + p.carried * 0.05)), range: 6.5 + p.carried * 0.35 }];
+    for (const e of fx) if (e.kind === 'pulse') lights.push({ pos: [e.pos[0], e.pos[1] + 1.5, e.pos[2]], col: [1.6 * e.left, 1.2 * e.left, 0.55 * e.left], range: T.pulse_radius * 2 });
+    const lanternLights = world.lanterns
+      .filter((L) => L.lit)
+      .map((L) => ({ L, d: Math.hypot(L.pos[0] - eye[0], L.pos[2] - eye[2]) }))
+      .sort((a, b) => a.d - b.d);
+    for (const { L } of lanternLights) {
+      const flick = 1 + Math.sin(time * 7 + hash01(L.id) * 9) * 0.04;
+      lights.push({ pos: [L.pos[0], L.pos[1] + 4.2, L.pos[2]], col: WARM.map((c) => c * 2.1 * flick * (L.blink ?? 1)), range: 19 });
+    }
 
     this.r.begin({ viewProj, camPos: eye, camRight, camUp, env, lights });
-    this.r.drawMesh(this.island, m4.ident());
+    this.r.drawMesh(this.sceneryFor(lv), m4.ident());
 
-    const glows = [];
-    for (const s of this.stars) glows.push({ center: s.center, size: s.size * (0.8 + 0.2 * Math.sin(time * 1.3 + s.tw)), color: [0.5, 0.5, 0.65], noFog: true });
-    glows.push({ center: [-160, 230, -240], size: 34, color: [0.42, 0.44, 0.62], noFog: true });
+    const sprites = [];
+    for (const s of this.stars) sprites.push({ center: s.center, size: s.size * (0.8 + 0.2 * Math.sin(time * 1.3 + s.tw)), color: [0.5, 0.5, 0.65], noFog: true });
+    sprites.push({ center: [-160, 230, -240], size: 34, color: [0.42, 0.44, 0.62], noFog: true });
+    for (const pad of lv.pads) sprites.push({ center: [pad.pos[0], pad.pos[1] + 0.1, pad.pos[2]], size: pad.r * (1.1 + 0.15 * Math.sin(time * 4)), ground: true, ring: true, ringWidth: 0.2, color: [0.2, 0.6, 0.55] });
 
     for (const L of world.lanterns) {
       const fill = L.lit ? 1 : Math.min(1, L.deposited / T.lantern_cost);
-      this.r.drawMesh(this.lantern, m4.translate(L.pos[0], 0, L.pos[2]), { emit: L.lit ? 1 : fill * 0.3 });
-      if (L.lit) glows.push({ center: [L.pos[0], 4.2, L.pos[2]], size: 5.5, color: [0.75, 0.38, 0.12] });
-      else if (fill > 0) glows.push({ center: [L.pos[0], 4.2, L.pos[2]], size: 2.5 * fill, color: [0.5, 0.25, 0.08] });
-      glows.push({
-        center: [L.pos[0], 0.05, L.pos[2]], size: T.safe_radius, ground: true, ring: true, ringWidth: 0.06,
-        color: L.lit ? [0.5, 0.3, 0.1] : [0.22, 0.17, 0.26],
-      });
+      const base = m4.translate(L.pos[0], L.pos[1], L.pos[2]);
+      this.r.drawMesh(this.lantern, base);
+      const blink = L.blink ?? 1;
+      const tint = L.lit ? RGB.lanternLit.map((c) => c * (0.6 + 0.4 * blink)) : RGB.lanternOff.map((c, i) => c + (RGB.lanternLit[i] - c) * fill * 0.35);
+      const squash = !L.lit && this.options.colorBlind ? 0.8 : 1;
+      this.r.drawMesh(this.paper, compose(base, m4.translate(0, 4.2 - (1 - squash) * 0.6, 0), m4.scale(1, squash, 1)), { tint, emit: L.lit ? blink : fill * 0.3 });
+      const top = [L.pos[0], L.pos[1] + 4.2, L.pos[2]];
+      if (L.lit) {
+        sprites.push({ center: top, size: 5.5 * (0.7 + 0.3 * blink), color: WARM.map((c) => c * 0.7 * blink) });
+        sprites.push({ center: top, size: 1.6, color: RGB.lanternCore.map((c) => c * 0.6 * blink) });
+        if (!L.weak) sprites.push({ center: [L.pos[0], L.pos[1] + 0.05, L.pos[2]], size: T.safe_radius, ground: true, ring: true, ringWidth: 0.05, color: [0.5, 0.32, 0.1] });
+      } else if (fill > 0) {
+        sprites.push({ center: top, size: 2.5 * fill, color: [0.5, 0.25, 0.08] });
+      }
       const near = Math.hypot(L.pos[0] - p.pos[0], L.pos[2] - p.pos[2]) <= T.interact_radius + 2;
-      if (!L.lit && near) glows.push({ center: [L.pos[0], 0.06, L.pos[2]], size: T.interact_radius, ground: true, ring: true, ringWidth: 0.1, color: [0.45, 0.4, 0.3] });
+      if (near && !L.full) sprites.push({ center: [L.pos[0], L.pos[1] + 0.06, L.pos[2]], size: T.interact_radius, ground: true, ring: true, ringWidth: 0.12, color: [0.45, 0.4, 0.3] });
     }
 
     for (const m of world.motes) {
       const ph = hash01(m.id) * 6.28;
-      const y = 0.75 + Math.sin(time * 2.2 + ph) * 0.18;
+      const fading = m.kind === 'dropped' && m.ttl < 120 && Math.floor(time * 8) % 2 === 0;
+      if (fading) continue;
+      const y = m.pos[1] + 0.75 + Math.sin(time * 2.2 + ph) * 0.18;
       const pos = [m.pos[0] + Math.sin(time * 1.3 + ph) * 0.12, y, m.pos[2] + Math.cos(time * 1.1 + ph) * 0.12];
       this.r.drawMesh(this.mote, m4.translate(pos[0], pos[1], pos[2]));
-      glows.push({ center: pos, size: 0.85, color: [0.55, 0.48, 0.15] });
+      sprites.push({ center: pos, size: 0.85, color: RGB.moteHalo.map((c) => c * 0.55) });
+    }
+
+    for (const c of world.charms) {
+      if (!c.available) continue;
+      const pos = [c.pos[0], c.pos[1] + 1.1 + Math.sin(time * 2) * 0.15, c.pos[2]];
+      this.r.drawMesh(this.charm, compose(m4.translate(pos[0], pos[1], pos[2]), m4.rotY(time * 1.5)));
+      sprites.push({ center: pos, size: 1.8, color: [0.55, 0.12, 0.08] });
     }
 
     for (const sh of world.shades) {
       const ph = hash01(sh.id) * 6.28;
-      let y = Math.max(sh.pos[1], 0) + 0.95 + Math.sin(time * 3 + ph) * 0.12;
+      let y = sh.pos[1] + Math.sin(time * 3 + ph) * 0.12;
       let scale = 1;
-      let tint = [1, 1, 1];
       let wobble = 0;
-      if (sh.state === 'emerge') {
-        const left = Math.max(0, sh.emergeUntil - world.tick) / 60;
+      const stunned = sh.state === 'stunned';
+      if (sh.state === 'spawning') {
+        const left = sh.spawnLeft / 60;
         y -= left * 2.2;
         scale = 1 - left * 0.5;
-      } else if (sh.state === 'stunned') {
-        tint = [4.2, 3.8, 4.8]; // washed-out lilac: harmless for now
-        scale = 0.8;
+      } else if (stunned) {
+        scale = 0.82;
         wobble = Math.sin(time * 18 + ph) * 0.25;
         for (let i = 0; i < 3; i++) {
           const a = time * 4 + (i * Math.PI * 2) / 3;
-          glows.push({ center: [sh.pos[0] + Math.cos(a) * 0.55, y + 1.0, sh.pos[2] + Math.sin(a) * 0.55], size: 0.32, color: [0.9, 0.8, 0.4] });
+          sprites.push({ center: [sh.pos[0] + Math.cos(a) * 0.55, y + 1.0, sh.pos[2] + Math.sin(a) * 0.55], size: 0.32, color: RGB.gold.map((c) => c * 0.8) });
         }
+      } else if (sh.state === 'drain') {
+        wobble = Math.sin(time * 6 + ph) * 0.1;
       }
       const face = Math.atan2(p.pos[0] - sh.pos[0], p.pos[2] - sh.pos[2]);
       const M = compose(m4.translate(sh.pos[0], y, sh.pos[2]), m4.rotY(face), m4.rotZ(wobble), m4.scale(scale));
-      this.r.drawMesh(this.shade, M, { tint, emit: sh.state === 'stunned' ? 0.3 : 1 });
-      glows.push({ center: [sh.pos[0], y, sh.pos[2]], size: 2.6 * scale, color: sh.state === 'stunned' ? [0.12, 0.1, 0.16] : [0.24, 0.06, 0.32] });
+      const model = stunned ? this.shadeStunned : this.options.colorBlind && this.shadeCB ? this.shadeCB : this.shade;
+      this.r.drawMesh(model, M, { emit: stunned ? 0.3 : 1 });
+      const rim = this.options.colorBlind ? [0, 0.7, 1] : RGB.shadeRim;
+      sprites.push({ center: [sh.pos[0], y, sh.pos[2]], size: 2.6 * scale, color: stunned ? [0.1, 0.09, 0.14] : rim.map((c) => c * 0.32) });
     }
 
-    const blink = world.state === 'playing' && world.tick < p.invulnUntil && Math.floor(world.tick / 5) % 2 === 0;
-    if (!blink) this.r.drawMesh(this.player, playerM);
-    glows.push({ center: lamp, size: 1.1 + p.carried * 0.12, color: [0.85, 0.5, 0.18] });
+    for (const d of world.drifters) {
+      const prev = this.trails.get(d.id) || { pos: [...d.pos], dir: [1, 0] };
+      const mx = d.pos[0] - prev.pos[0];
+      const mz = d.pos[2] - prev.pos[2];
+      const ml = Math.hypot(mx, mz);
+      if (ml > 1e-4) prev.dir = [mx / ml, mz / ml];
+      prev.pos = [...d.pos];
+      this.trails.set(d.id, prev);
+      const yaw = Math.atan2(prev.dir[0], prev.dir[1]);
+      for (let i = 0; i < 7; i++) {
+        const back = i * 0.42;
+        const side = Math.sin(time * 6 - i * 0.9) * 0.28 * (i / 6);
+        const pos = [d.pos[0] - prev.dir[0] * back + prev.dir[1] * side, d.pos[1] + Math.sin(time * 5 + i * 0.8) * 0.15, d.pos[2] - prev.dir[1] * back - prev.dir[0] * side];
+        this.r.drawMesh(this.ribbon, compose(m4.translate(pos[0], pos[1], pos[2]), m4.rotY(yaw + Math.PI / 2 + side), m4.rotX(Math.sin(time * 7 + i) * 0.5), m4.scale(1 - i * 0.08)));
+      }
+      sprites.push({ center: d.pos, size: 1.4, color: RGB.drifter.map((c) => c * (d.stolen ? 0.5 : 0.25)) });
+    }
+
+    const blink = p.invuln > 0 && Math.floor(world.tick / 5) % 2 === 0;
+    if (!blink && p.dead === 0) this.r.drawMesh(this.player, playerM);
+    sprites.push({ center: lamp, size: 1.1 + p.carried * 0.1, color: [0.85, 0.5, 0.18] });
     for (let i = 0; i < p.carried; i++) {
       const a = time * 2.4 + (i / Math.max(1, p.carried)) * Math.PI * 2;
-      glows.push({ center: [p.pos[0] + Math.cos(a) * 0.75, p.pos[1] + 1.0 + Math.sin(time * 3 + i) * 0.15, p.pos[2] + Math.sin(a) * 0.75], size: 0.35, color: [0.75, 0.62, 0.2] });
+      sprites.push({ center: [p.pos[0] + Math.cos(a) * 0.75, p.pos[1] + 1.0 + Math.sin(time * 3 + i) * 0.15, p.pos[2] + Math.sin(a) * 0.75], size: 0.35, color: RGB.moteHalo.map((c) => c * 0.65) });
+    }
+    if (p.charm > 0) sprites.push({ center: [p.pos[0], p.pos[1] + 0.2, p.pos[2]], size: 1.3, ground: true, ring: true, ringWidth: 0.15, color: [0.6, 0.12, 0.1] });
+
+    const wind = windAt(world);
+    if (wind.active || wind.warn) {
+      const a = (wind.dir * Math.PI) / 180;
+      const dir = [Math.cos(a), Math.sin(a)];
+      const n = wind.active ? 50 : 18;
+      for (let i = 0; i < n; i++) {
+        const h1 = hash01(`leaf${i * 7919}`);
+        const h2 = hash01(`leaf-b${i * 104729}`);
+        const h3 = hash01(`leaf-c${i * 15485863}`);
+        const along = ((time * (wind.active ? 7 : 4) + h1 * 20) % 20) - 10;
+        const across = (h2 - 0.5) * 18;
+        sprites.push({
+          center: [p.pos[0] + dir[0] * along - dir[1] * across, p.pos[1] + 0.4 + h3 * 3 + Math.sin(time * 5 + i) * 0.3, p.pos[2] + dir[1] * along + dir[0] * across],
+          size: 0.18,
+          color: [0.55, 0.62, 0.25],
+        });
+      }
     }
 
     for (const e of fx) {
       if (e.kind === 'pulse') {
         const r = T.pulse_radius * (1 - e.left * e.left);
-        glows.push({ center: [e.pos[0], 0.08, e.pos[2]], size: Math.max(0.1, r), ground: true, ring: true, ringWidth: 0.12, color: [1.2 * e.left, 0.8 * e.left, 0.3 * e.left] });
-        glows.push({ center: [e.pos[0], 1.2, e.pos[2]], size: 3 * e.left + 0.5, color: [0.9 * e.left, 0.65 * e.left, 0.3 * e.left] });
+        sprites.push({ center: [e.pos[0], e.pos[1] + 0.08, e.pos[2]], size: Math.max(0.1, r), ground: true, ring: true, ringWidth: 0.12, color: [1.2 * e.left, 0.8 * e.left, 0.3 * e.left] });
+        sprites.push({ center: [e.pos[0], e.pos[1] + 1.2, e.pos[2]], size: 3 * e.left + 0.5, color: [0.9 * e.left, 0.65 * e.left, 0.3 * e.left] });
       } else if (e.kind === 'spark') {
-        glows.push({ center: e.pos, size: 1.4 * e.left + 0.2, color: e.color.map((c) => c * e.left) });
+        sprites.push({ center: e.pos, size: 1.4 * e.left + 0.2, color: e.color.map((c) => c * e.left) });
       }
     }
-    this.r.drawGlows(glows);
+    this.r.drawSprites(sprites);
     return { eye, viewProj };
   }
 }

@@ -44,36 +44,38 @@ void main() {
   gl_FragColor = vec4(mix(col, uFogCol, clamp(f, 0.0, 1.0)), 1.0);
 }`;
 
-const GLOW_VS = `
-attribute vec2 aCorner;
-uniform vec3 uCenter; uniform vec3 uAxisU; uniform vec3 uAxisV; uniform float uSize; uniform mat4 uViewProj;
-varying vec2 vUV; varying vec3 vWorld;
+const SPRITE_VS = `
+attribute vec3 aCenter; attribute vec2 aCorner; attribute float aSize; attribute vec3 aColor; attribute vec3 aMode;
+uniform mat4 uViewProj; uniform vec3 uCamRight; uniform vec3 uCamUp; uniform vec3 uCamPos; uniform float uFogDensity;
+varying vec2 vUV; varying vec3 vColor; varying float vRing; varying float vFog;
 void main() {
-  vUV = aCorner;
-  vec3 w = uCenter + (uAxisU * aCorner.x + uAxisV * aCorner.y) * uSize;
-  vWorld = w;
+  vec3 ax = aMode.x > 0.5 ? vec3(1.0, 0.0, 0.0) : uCamRight;
+  vec3 ay = aMode.x > 0.5 ? vec3(0.0, 0.0, 1.0) : uCamUp;
+  vec3 w = aCenter + (ax * aCorner.x + ay * aCorner.y) * aSize;
+  float d = length(w - uCamPos) * uFogDensity * 0.8;
+  vFog = aMode.z > 0.5 ? exp(-d * d) : 1.0;
+  vUV = aCorner; vColor = aColor; vRing = aMode.y;
   gl_Position = uViewProj * vec4(w, 1.0);
 }`;
 
-const GLOW_FS = `
+const SPRITE_FS = `
 precision highp float;
-varying vec2 vUV; varying vec3 vWorld;
-uniform vec3 uColor; uniform float uMode; uniform float uRingWidth; uniform vec3 uCamPos; uniform float uFogDensity;
+varying vec2 vUV; varying vec3 vColor; varying float vRing; varying float vFog;
 void main() {
   float r = length(vUV);
   float a;
-  if (uMode < 0.5) {
+  if (vRing <= 0.0) {
     a = clamp(1.0 - r, 0.0, 1.0);
     a = a * a;
   } else {
-    float edge = 1.0 - uRingWidth;
-    a = (1.0 - smoothstep(0.0, uRingWidth, abs(r - edge))) * step(r, 1.0);
+    a = (1.0 - smoothstep(0.0, vRing, abs(r - (1.0 - vRing)))) * step(r, 1.0);
     a += 0.18 * smoothstep(1.0, 0.0, r) * step(r, 1.0);
   }
-  float dist = length(vWorld - uCamPos);
-  float k = exp(-(uFogDensity * dist) * (uFogDensity * dist));
-  gl_FragColor = vec4(uColor * a * k, 1.0);
+  gl_FragColor = vec4(vColor * a * vFog, 1.0);
 }`;
+
+const SPRITE_FLOATS = 12; // center3 corner2 size1 color3 mode3
+const CORNERS = [-1, -1, 1, -1, 1, 1, -1, -1, 1, 1, -1, 1];
 
 function compile(gl, type, src) {
   const sh = gl.createShader(type);
@@ -112,10 +114,10 @@ export class Renderer {
     this.gl = gl;
     this.canvas = canvas;
     this.lit = program(gl, LIT_VS, LIT_FS);
-    this.glow = program(gl, GLOW_VS, GLOW_FS);
-    this.quad = gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, this.quad);
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, 1, 1, -1, -1, 1, 1, -1, 1]), gl.STATIC_DRAW);
+    this.sprite = program(gl, SPRITE_VS, SPRITE_FS);
+    this.spriteBuf = gl.createBuffer();
+    this.spriteData = new Float32Array(SPRITE_FLOATS * 6 * 512);
+    this.stats = { draws: 0, sprites: 0 };
     gl.enable(gl.DEPTH_TEST);
     gl.disable(gl.CULL_FACE);
     this.frame = null;
@@ -145,7 +147,8 @@ export class Renderer {
   begin(frame) {
     const gl = this.gl;
     this.frame = frame;
-    const f = frame.env.fogCol;
+    this.stats = { draws: 0, sprites: 0 };
+    const f = frame.env.clearCol || frame.env.fogCol;
     gl.clearColor(f[0], f[1], f[2], 1);
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
     gl.disable(gl.BLEND);
@@ -188,43 +191,66 @@ export class Renderer {
     gl.uniform3fv(u.uTint, tint);
     gl.uniform1f(u.uEmitScale, emit);
     gl.drawArrays(gl.TRIANGLES, 0, mesh.count);
+    this.stats.draws++;
   }
 
-  /** Additive sprites. items: [{center, size, color, ground?, ring?, ringWidth?, noFog?}] */
-  drawGlows(items) {
+  /**
+   * Additive sprites in one draw call.
+   * items: [{center, size, color, ground?, ring? (width, 0 = soft disc), noFog?}]
+   */
+  drawSprites(items) {
     if (!items.length) return;
     const gl = this.gl;
-    const { p, u, a } = this.glow;
+    const { p, u, a } = this.sprite;
     const f = this.frame;
-    // the lit program's attributes must not leak into this draw
+    const need = items.length * 6 * SPRITE_FLOATS;
+    if (this.spriteData.length < need) this.spriteData = new Float32Array(need * 2);
+    const d = this.spriteData;
+    let o = 0;
+    for (const g of items) {
+      const ring = g.ring ? g.ringWidth ?? 0.08 : 0;
+      for (let k = 0; k < 6; k++) {
+        d[o++] = g.center[0];
+        d[o++] = g.center[1];
+        d[o++] = g.center[2];
+        d[o++] = CORNERS[k * 2];
+        d[o++] = CORNERS[k * 2 + 1];
+        d[o++] = g.size;
+        d[o++] = g.color[0];
+        d[o++] = g.color[1];
+        d[o++] = g.color[2];
+        d[o++] = g.ground ? 1 : 0;
+        d[o++] = ring;
+        d[o++] = g.noFog ? 0 : 1;
+      }
+    }
     for (const loc of Object.values(this.lit.a)) gl.disableVertexAttribArray(loc);
     gl.useProgram(p);
     gl.enable(gl.BLEND);
     gl.blendFunc(gl.ONE, gl.ONE);
     gl.depthMask(false);
-    gl.bindBuffer(gl.ARRAY_BUFFER, this.quad);
-    gl.enableVertexAttribArray(a.aCorner);
-    gl.vertexAttribPointer(a.aCorner, 2, gl.FLOAT, false, 8, 0);
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.spriteBuf);
+    gl.bufferData(gl.ARRAY_BUFFER, d.subarray(0, o), gl.DYNAMIC_DRAW);
+    const stride = SPRITE_FLOATS * 4;
+    const attr = (name, size, offset) => {
+      gl.enableVertexAttribArray(a[name]);
+      gl.vertexAttribPointer(a[name], size, gl.FLOAT, false, stride, offset * 4);
+    };
+    attr('aCenter', 3, 0);
+    attr('aCorner', 2, 3);
+    attr('aSize', 1, 5);
+    attr('aColor', 3, 6);
+    attr('aMode', 3, 9);
     gl.uniformMatrix4fv(u.uViewProj, false, f.viewProj);
+    gl.uniform3fv(u.uCamRight, f.camRight);
+    gl.uniform3fv(u.uCamUp, f.camUp);
     gl.uniform3fv(u.uCamPos, f.camPos);
-    for (const g of items) {
-      gl.uniform3fv(u.uCenter, g.center);
-      if (g.ground) {
-        gl.uniform3fv(u.uAxisU, [1, 0, 0]);
-        gl.uniform3fv(u.uAxisV, [0, 0, 1]);
-      } else {
-        gl.uniform3fv(u.uAxisU, f.camRight);
-        gl.uniform3fv(u.uAxisV, f.camUp);
-      }
-      gl.uniform1f(u.uSize, g.size);
-      gl.uniform3fv(u.uColor, g.color);
-      gl.uniform1f(u.uMode, g.ring ? 1 : 0);
-      gl.uniform1f(u.uRingWidth, g.ringWidth ?? 0.08);
-      gl.uniform1f(u.uFogDensity, g.noFog ? 0 : f.env.fogDensity * 0.8);
-      gl.drawArrays(gl.TRIANGLES, 0, 6);
-    }
-    gl.disableVertexAttribArray(a.aCorner);
+    gl.uniform1f(u.uFogDensity, f.env.fogDensity);
+    gl.drawArrays(gl.TRIANGLES, 0, items.length * 6);
+    for (const loc of Object.values(a)) gl.disableVertexAttribArray(loc);
     gl.depthMask(true);
     gl.disable(gl.BLEND);
+    this.stats.draws++;
+    this.stats.sprites += items.length;
   }
 }
