@@ -3,7 +3,8 @@
 
 import { createWorld, step, snapshot, TICK_RATE, windAt, timeLeftExact, isWeak, fuelValue } from '../core/sim.js';
 import { getNight } from '../core/level.js';
-import { validateScenario } from '../core/validate.js';
+import { validateScenario, validateInputs } from '../core/validate.js';
+import { createInputTimeline } from '../core/inputs.js';
 import { Renderer } from './renderer.js';
 import { Scene } from './scene.js';
 import { Hud } from './hud.js';
@@ -62,6 +63,16 @@ if (params.get('scenario')) {
   const doc = await (await fetch(params.get('scenario'), { cache: 'no-store' })).json();
   pendingScenario = validateScenario(doc, getNight(scenarioNight).lanterns.map((l) => l.id));
 }
+
+// ?demo=1 (tools/demo.mjs): no animation loop; the video tool calls __DDL.frame(ms) with a virtual clock.
+// ?replay=<inputs.json>: inputs come from a recorded file (e.g. the autopilot) instead of the keyboard.
+const DEMO = params.has('demo');
+let replayAt = null;
+if (params.get('replay')) {
+  const doc = await (await fetch(params.get('replay'), { cache: 'no-store' })).json();
+  replayAt = createInputTimeline(validateInputs(doc));
+}
+let demoYaw = Number(params.get('yaw') || 0);
 
 const campaign = { night: 1, total: 0, won: [] };
 let world = null;
@@ -564,7 +575,7 @@ function frame(nowMs) {
     acc += dt;
     while (acc >= 1 / TICK_RATE && mode === 'playing') {
       acc -= 1 / TICK_RATE;
-      handle(step(world, controls.sample()), now);
+      handle(step(world, replayAt ? replayAt(world.tick) : controls.sample()), now);
       if (world.state !== 'playing') endNight();
     }
   }
@@ -577,13 +588,22 @@ function frame(nowMs) {
   const cpu0 = performance.now();
   const aspect = renderer.resize();
   const orbit = mode === 'menu' ? { eye: [Math.cos(now * 0.1) * 55, 26, Math.sin(now * 0.1) * 55], target: [0, 0, 0] } : null;
-  lastView = scene.draw(world, orbit || { yawDeg: controls.yawDeg, dist: controls.dist, target: [camTarget[0] + sx, camTarget[1], camTarget[2]] }, fx, now, aspect);
+  if (replayAt) {
+    // a replay has no mouse: the view turns smoothly towards where Mây is running
+    const v = world.player.vel;
+    if (Math.hypot(v[0], v[2]) > 1.5) {
+      const want = (Math.atan2(v[0], v[2]) * 180) / Math.PI;
+      demoYaw += ((((want - demoYaw) % 360) + 540) % 360 - 180) * (1 - Math.exp(-dt * 1.3));
+    }
+  }
+  const viewYaw = replayAt ? demoYaw : controls.yawDeg;
+  lastView = scene.draw(world, orbit || { yawDeg: viewYaw, dist: controls.dist, target: [camTarget[0] + sx, camTarget[1], camTarget[2]] }, fx, now, aspect);
   hud.update(world, now, lastView);
   audio.update();
   cpuTimes.push(performance.now() - cpu0);
   if (cpuTimes.length > 600) cpuTimes.shift();
   if (params.get('fps')) $('fps').textContent = `${fps().toFixed(0)} FPS`;
-  requestAnimationFrame(frame);
+  if (!DEMO) requestAnimationFrame(frame);
 }
 
 if (params.get('autostart')) {
@@ -592,7 +612,7 @@ if (params.get('autostart')) {
 } else {
   showMenu();
 }
-requestAnimationFrame(frame);
+if (!DEMO) requestAnimationFrame(frame);
 
 // Hooks for automated checks (tools/capture.mjs). Read-only views of the game.
 window.__DDL = {
@@ -606,10 +626,16 @@ window.__DDL = {
   snapshot: () => snapshot(world),
   get fxState() { return { shake, flashOn: $('flash').classList.contains('on'), reducedMotion: hud.reducedMotion }; },
   act,
-  // ?debug=1 only: run n ticks with no input (used to reach the wind gust in screenshots)
+  // ?debug=1 or ?demo=1 only: run n ticks at once (no input, or the replay's input)
   advance: (n) => {
-    if (!params.get('debug')) return false;
-    for (let i = 0; i < n && world.state === 'playing'; i++) handle(step(world, { move: [0, 0], cam_yaw_deg: controls.yawDeg }), performance.now() / 1000);
+    if (!params.get('debug') && !DEMO) return false;
+    for (let i = 0; i < n && world.state === 'playing'; i++) {
+      handle(step(world, replayAt ? replayAt(world.tick) : { move: [0, 0], cam_yaw_deg: controls.yawDeg }), performance.now() / 1000);
+      if (world.state !== 'playing') endNight();
+    }
+    camTarget = [...world.player.pos];
     return true;
   },
+  // ?demo=1 only: draw one frame at virtual time ms (tools/demo.mjs)
+  frame: (ms) => DEMO && (frame(ms), true),
 };
