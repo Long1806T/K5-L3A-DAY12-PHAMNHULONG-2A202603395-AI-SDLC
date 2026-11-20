@@ -1,0 +1,205 @@
+{
+  "when": "2026-11-20T15:24:28.647Z",
+  "viewport": "1280x720",
+  "renderer": "Chrome headless + SwiftShader (software WebGL, no GPU)",
+  "shots": [
+    {
+      "file": "docs/proof/phase-2/screens/01-menu.png",
+      "what": "Menu chính: Chơi, chọn Đêm, Cài đặt, Điều khiển",
+      "mode": "menu",
+      "night": 1,
+      "tick": 0,
+      "state": "playing",
+      "score": 0,
+      "result": null
+    },
+    {
+      "file": "docs/proof/phase-2/screens/02-intro.png",
+      "what": "Giới thiệu Đêm 1: tên đảo + lời Ông Đăng",
+      "mode": "intro",
+      "night": 1,
+      "tick": 0,
+      "state": "playing",
+      "score": 0,
+      "result": null
+    },
+    {
+      "file": "docs/proof/phase-2/screens/03-night1-hud.png",
+      "what": "HUD đúng vị trí: Ngọn Lửa trên trái, đồng hồ giữa, đèn + điểm phải, thanh 10 ô dưới giữa, hồi chiêu dưới phải",
+      "mode": "playing",
+      "night": 1,
+      "tick": 149,
+      "state": "playing",
+      "score": 0,
+      "result": null
+    },
+    {
+      "file": "docs/proof/phase-2/screens/04-arrow.png",
+      "what": "Xoay camera ra xa: mũi tên ở mép màn hình chỉ tới đèn chưa sáng gần nhất",
+      "mode": "playing",
+      "night": 1,
+      "tick": 359,
+      "state": "playing",
+      "score": 0,
+      "result": null
+    },
+    {
+      "file": "docs/proof/phase-2/screens/05-pause.png",
+      "what": "Tạm dừng: Tiếp tục / Chơi lại Đêm / Cài đặt / Về menu; logic dừng (state \"paused\")",
+      "mode": "paused",
+      "night": 1,
+      "tick": 375,
+      "state": "paused",
+      "score": 0,
+      "result": null
+    },
+    {
+      "file": "docs/proof/phase-2/screens/06-settings.png",
+      "what": "Cài đặt: âm lượng 35, độ nhạy 1.5 (lưu localStorage)",
+      "mode": "paused",
+      "night": 1,
+      "tick": 375,
+      "state": "paused",
+      "score": 0,
+      "result": null
+    },
+    {
+      "file": "docs/proof/phase-2/screens/07-night2-bridge.png",
+      "what": "Đêm 2: cầu tre, Bùa Gió đỏ viền vàng trên cầu, Gió Lạc (dải lụa xám xanh) đuổi vì Mây mang 6 đom đóm",
+      "mode": "playing",
+      "night": 2,
+      "tick": 164,
+      "state": "playing",
+      "score": 0,
+      "result": null
+    },
+    {
+      "file": "docs/proof/phase-2/screens/08-night2-pad.png",
+      "what": "Đêm 2: chạm bục nhảy (20,0,18), bay qua biển mây sang đảo B",
+      "mode": "playing",
+      "night": 2,
+      "tick": 210,
+      "state": "playing",
+      "score": 0,
+      "result": null
+    },
+    {
+      "file": "docs/proof/phase-2/screens/09-night3-warn.png",
+      "what": "Đêm 3: lá bay báo gió sắp thổi (2 s trước cơn gió), tháp chuông và tầng ở xa",
+      "mode": "playing",
+      "night": 3,
+      "tick": 1835,
+      "state": "playing",
+      "score": 0,
+      "result": null
+    },
+    {
+      "file": "docs/proof/phase-2/screens/10-night3-wind.png",
+      "what": "Đêm 3: cơn gió đang thổi (wind.active)",
+      "mode": "playing",
+      "night": 3,
+      "tick": 2065,
+      "state": "playing",
+      "score": 0,
+      "result": null
+    },
+    {
+      "file": "docs/proof/phase-2/screens/11-night3-pad.png",
+      "what": "Đêm 3: bục nhảy (0,3,13) bắn lên tầng 2",
+      "mode": "playing",
+      "night": 3,
+      "tick": 149,
+      "state": "playing",
+      "score": 0,
+      "result": null
+    },
+    {
+      "file": "docs/proof/phase-2/screens/12-result-lost.png",
+      "what": "Thua Đêm (hết Ngọn Lửa): chơi lại Đêm đó hoặc về menu",
+      "mode": "result",
+      "night": 1,
+      "tick": 210,
+      "state": "lost",
+      "score": 0,
+      "result": {
+        "result": "lost",
+        "reason": "no_flames",
+        "tick": 210
+      }
+    },
+    {
+      "file": "docs/proof/phase-2/screens/13-result-won.png",
+      "what": "Thắng Đêm 3: nút Đón Bình Minh",
+      "mode": "result",
+      "night": 3,
+      "tick": 16,
+      "state": "won",
+      "score": 1068,
+      "result": {
+        "result": "won",
+        "reason": "all_lit",
+        "tick": 16
+      }
+    },
+    {
+      "file": "docs/proof/phase-2/screens/14-dawn.png",
+      "what": "Màn hình Bình Minh với tổng điểm các Đêm đã thắng",
+      "mode": "dawn",
+      "night": 3,
+      "tick": 16,
+      "state": "won",
+      "score": 1068,
+      "result": {
+        "result": "won",
+        "reason": "all_lit",
+        "tick": 16
+      }
+    },
+    {
+      "file": "docs/proof/phase-2/screens/15-fps.png",
+      "what": "Đo FPS 1280×720 (góc phải trên)",
+      "mode": "playing",
+      "night": 1,
+      "tick": 658,
+      "state": "playing",
+      "score": 0,
+      "result": null
+    }
+  ],
+  "checks": {
+    "arrowVisible": true,
+    "pausedState": "paused",
+    "simTickFrozenWhilePaused": true,
+    "settingsAfterReload": {
+      "volume": 0.35,
+      "sensitivity": 1.5
+    },
+    "windActive": {
+      "active": true,
+      "dir_deg": 320.956
+    },
+    "soundsPlayed": {
+      "hit": 4,
+      "lose": 1,
+      "deposit": 2,
+      "lit": 1,
+      "win": 1,
+      "click": 1,
+      "pickup": 2,
+      "jump": 1,
+      "dash": 1,
+      "pulse": 1,
+      "countdown": 3,
+      "shade": 2
+    },
+    "soundsMissing": [],
+    "fps": {
+      "frames": 35,
+      "avg_fps": 2.8,
+      "cpu_ms_avg": 1.01,
+      "cpu_ms_p95": 3.6,
+      "note": "SwiftShader software WebGL in a 2-vCPU container without GPU: avg_fps measures CPU rasterisation, cpu_ms is the game's own JS work per frame"
+    }
+  },
+  "problems": []
+}
