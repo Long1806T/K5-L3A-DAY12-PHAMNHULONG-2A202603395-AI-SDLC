@@ -1,4 +1,4 @@
-// Deterministic game logic for Đảo Đèn Lồng (Test Contract v1.2).
+// Deterministic game logic for Đảo Đèn Lồng (Test Contract v1.3).
 // Pure: no DOM, no Math.random, no clocks. Browser and headless both drive the
 // game only through createWorld() + step() + snapshot().
 //
@@ -856,7 +856,7 @@ export function step(w, rawInput) {
 
 // ---------------------------------------------------------------- output
 
-/** Snapshot object in Test Contract v1.2 shape. */
+/** Snapshot object in Test Contract v1.3 shape. */
 export function snapshot(w) {
   const p = w.player;
   const wind = windAt(w);
