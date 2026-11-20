@@ -1,0 +1,127 @@
+{
+  "nights": 10,
+  "crashes": 0,
+  "results": [
+    "lost",
+    "lost",
+    "lost",
+    "lost",
+    "lost",
+    "lost",
+    "lost",
+    "lost",
+    "lost",
+    "lost"
+  ],
+  "mem_start_mb": 41.6,
+  "mem_end_mb": 45.6,
+  "duration_s": 0.7,
+  "seed": 7,
+  "heap_start_mb": 4.4,
+  "heap_end_mb": 4.8,
+  "v8_flags": "--no-opt --no-maglev",
+  "mem_note": "RSS và heap JS đọc sau 2 lần GC toàn phần: mem_start sau khi tải xong Đêm đầu, mem_end sau khi Đêm cuối kết thúc và đã được giải phóng",
+  "node": "v22.23.5",
+  "detail": [
+    {
+      "night": 1,
+      "seed": "7",
+      "result": "lost",
+      "reason": "no_flames",
+      "ticks": 1839,
+      "score": 0,
+      "events": 23,
+      "json_bytes": 451812
+    },
+    {
+      "night": 2,
+      "seed": "8",
+      "result": "lost",
+      "reason": "no_flames",
+      "ticks": 2497,
+      "score": 0,
+      "events": 35,
+      "json_bytes": 655272
+    },
+    {
+      "night": 3,
+      "seed": "9",
+      "result": "lost",
+      "reason": "no_flames",
+      "ticks": 2555,
+      "score": 0,
+      "events": 38,
+      "json_bytes": 764743
+    },
+    {
+      "night": 1,
+      "seed": "10",
+      "result": "lost",
+      "reason": "no_flames",
+      "ticks": 1404,
+      "score": 0,
+      "events": 22,
+      "json_bytes": 341096
+    },
+    {
+      "night": 2,
+      "seed": "11",
+      "result": "lost",
+      "reason": "no_flames",
+      "ticks": 2078,
+      "score": 0,
+      "events": 30,
+      "json_bytes": 526127
+    },
+    {
+      "night": 3,
+      "seed": "12",
+      "result": "lost",
+      "reason": "no_flames",
+      "ticks": 1157,
+      "score": 0,
+      "events": 19,
+      "json_bytes": 311805
+    },
+    {
+      "night": 1,
+      "seed": "13",
+      "result": "lost",
+      "reason": "no_flames",
+      "ticks": 1874,
+      "score": 0,
+      "events": 24,
+      "json_bytes": 459005
+    },
+    {
+      "night": 2,
+      "seed": "14",
+      "result": "lost",
+      "reason": "no_flames",
+      "ticks": 4694,
+      "score": 0,
+      "events": 49,
+      "json_bytes": 1320351
+    },
+    {
+      "night": 3,
+      "seed": "15",
+      "result": "lost",
+      "reason": "no_flames",
+      "ticks": 2707,
+      "score": 0,
+      "events": 37,
+      "json_bytes": 810436
+    },
+    {
+      "night": 1,
+      "seed": "16",
+      "result": "lost",
+      "reason": "no_flames",
+      "ticks": 2166,
+      "score": 0,
+      "events": 29,
+      "json_bytes": 542163
+    }
+  ]
+}

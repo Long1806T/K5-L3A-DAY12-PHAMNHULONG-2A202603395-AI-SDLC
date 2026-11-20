@@ -1,0 +1,293 @@
+{
+  "when": "2026-11-20T16:34:05.034Z",
+  "viewport": "1280x720",
+  "renderer": "Chrome headless + SwiftShader (software WebGL, no GPU)",
+  "shots": [
+    {
+      "file": "docs/proof/phase-4/screens/01-menu.png",
+      "what": "Menu chính có thêm \"Bảng xếp hạng\"",
+      "mode": "menu",
+      "night": 1,
+      "tick": 0,
+      "state": "playing",
+      "score": 0,
+      "result": null
+    },
+    {
+      "file": "docs/proof/phase-4/screens/02-settings.png",
+      "what": "Cài đặt: phụ đề và chỉ báo, giảm chuyển động, chữ lớn ×1,25, đổi phím (đều được lưu)",
+      "mode": "menu",
+      "night": 1,
+      "tick": 0,
+      "state": "playing",
+      "score": 0,
+      "result": null
+    },
+    {
+      "file": "docs/proof/phase-4/screens/03-remap-conflict.png",
+      "what": "Đổi phím Nhảy sang E: phát hiện trùng với Tương tác, báo và đề nghị đổi chỗ",
+      "mode": "menu",
+      "night": 1,
+      "tick": 0,
+      "state": "playing",
+      "score": 0,
+      "result": null
+    },
+    {
+      "file": "docs/proof/phase-4/screens/04-remap-saved.png",
+      "what": "Sau khi đổi chỗ (Nhảy = E, Tương tác = Space) và đổi Tỏa sáng sang J",
+      "mode": "menu",
+      "night": 1,
+      "tick": 0,
+      "state": "playing",
+      "score": 0,
+      "result": null
+    },
+    {
+      "file": "docs/proof/phase-4/screens/05-remap-reset.png",
+      "what": "\"Khôi phục mặc định\" đưa mọi phím về như cũ",
+      "mode": "menu",
+      "night": 1,
+      "tick": 0,
+      "state": "playing",
+      "score": 0,
+      "result": null
+    },
+    {
+      "file": "docs/proof/phase-4/screens/06-sub-shade.png",
+      "what": "Bóng Mực xuất hiện: phụ đề + mũi tên tím ở mép màn hình chỉ hướng từng con",
+      "mode": "playing",
+      "night": 1,
+      "tick": 449,
+      "state": "playing",
+      "score": 0,
+      "result": null
+    },
+    {
+      "file": "docs/proof/phase-4/screens/07-sub-wind.png",
+      "what": "Gió sắp thổi: phụ đề (kèm âm thanh gió)",
+      "mode": "playing",
+      "night": 3,
+      "tick": 1829,
+      "state": "playing",
+      "score": 0,
+      "result": null
+    },
+    {
+      "file": "docs/proof/phase-4/screens/08-sub-last10.png",
+      "what": "10 giây cuối: phụ đề + đồng hồ đỏ nhấp nháy",
+      "mode": "playing",
+      "night": 1,
+      "tick": 219,
+      "state": "playing",
+      "score": 0,
+      "result": null
+    },
+    {
+      "file": "docs/proof/phase-4/screens/09-sub-fuel.png",
+      "what": "Đèn xuống dưới 30 dầu: phụ đề + thanh dầu đỏ nhấp nháy",
+      "mode": "playing",
+      "night": 1,
+      "tick": 179,
+      "state": "playing",
+      "score": 0,
+      "result": null
+    },
+    {
+      "file": "docs/proof/phase-4/screens/10-large-text.png",
+      "what": "Chữ lớn ×1,25: mọi chữ trên HUD ≥ 22,5 px",
+      "mode": "playing",
+      "night": 1,
+      "tick": 164,
+      "state": "playing",
+      "score": 0,
+      "result": null
+    },
+    {
+      "file": "docs/proof/phase-4/screens/11-name-invalid.png",
+      "what": "Thua Đêm → nhập tên; \"ab\" quá ngắn: báo lỗi, nút Lưu bị khóa",
+      "mode": "result",
+      "night": 1,
+      "tick": 90,
+      "state": "lost",
+      "score": 0,
+      "result": {
+        "result": "lost",
+        "reason": "dawn",
+        "tick": 90
+      }
+    },
+    {
+      "file": "docs/proof/phase-4/screens/12-board-after-loss.png",
+      "what": "Đã lưu tên tiếng Việt có dấu, bảng xếp hạng tô sáng dòng vừa lưu",
+      "mode": "board",
+      "night": 1,
+      "tick": 90,
+      "state": "lost",
+      "score": 0,
+      "result": {
+        "result": "lost",
+        "reason": "dawn",
+        "tick": 90
+      }
+    },
+    {
+      "file": "docs/proof/phase-4/screens/13-dawn-name.png",
+      "what": "Thắng Đêm 3 → màn Bình Minh có ô nhập tên để lưu điểm",
+      "mode": "dawn",
+      "night": 3,
+      "tick": 90,
+      "state": "won",
+      "score": 890,
+      "result": {
+        "result": "won",
+        "reason": "dawn_survived",
+        "tick": 90
+      }
+    },
+    {
+      "file": "docs/proof/phase-4/screens/14-board-after-dawn.png",
+      "what": "Bảng xếp hạng sau khi lưu ở màn Bình Minh (điểm cao hơn đứng trên)",
+      "mode": "board",
+      "night": 3,
+      "tick": 90,
+      "state": "won",
+      "score": 890,
+      "result": {
+        "result": "won",
+        "reason": "dawn_survived",
+        "tick": 90
+      }
+    },
+    {
+      "file": "docs/proof/phase-4/screens/15-board-from-menu.png",
+      "what": "Mở lại game (đã xóa dữ liệu trình duyệt) → menu → Bảng xếp hạng: dữ liệu vẫn còn (lưu trên đĩa)",
+      "mode": "board",
+      "night": 1,
+      "tick": 0,
+      "state": "playing",
+      "score": 0,
+      "result": null
+    },
+    {
+      "file": "docs/proof/phase-4/screens/16-bench-scene.png",
+      "what": "Cảnh benchmark chuẩn: Đêm 1, 200 Bóng Mực wander, 100 đom đóm, L1–L3 sáng, camera bay vòng r = 30 m, y = 15 m",
+      "mode": "bench"
+    }
+  ],
+  "checks": {
+    "remapConflictMessage": "⚠ Trùng phím: E đang dùng cho “Tương tác (thắp / châm dầu)”. Đổi chỗ phím của “Nhảy” và “Tương tác (thắp / châm dầu)”?",
+    "afterSwap": {
+      "jump": "KeyE",
+      "interact": "Space"
+    },
+    "keysAfterReload": {
+      "up": "KeyW",
+      "down": "KeyS",
+      "left": "KeyA",
+      "right": "KeyD",
+      "jump": "KeyE",
+      "dash": "Shift",
+      "interact": "Space",
+      "pulse": "KeyJ",
+      "pause": "KeyP",
+      "camLeft": "ArrowLeft",
+      "camRight": "ArrowRight"
+    },
+    "remappedJump": {
+      "before": 0,
+      "afterSpace": 0,
+      "afterE": 1
+    },
+    "keysAfterReset": {
+      "up": "KeyW",
+      "down": "KeyS",
+      "left": "KeyA",
+      "right": "KeyD",
+      "jump": "Space",
+      "dash": "Shift",
+      "interact": "KeyE",
+      "pulse": "KeyF",
+      "pause": "KeyP",
+      "camLeft": "ArrowLeft",
+      "camRight": "ArrowRight"
+    },
+    "shadeSpawn": {
+      "subs": "⚠ [tiếng rít] Bóng Mực xuất hiện — xem mũi tên ở mép màn hình",
+      "arrows": 2,
+      "marks": 0
+    },
+    "windSubtitle": "🌬 [tiếng gió] Gió sắp thổi — đứng vững hoặc tránh mép đảo",
+    "last10Subtitle": "⏳ [tiếng tích tắc] 10 giây cuối tới bình minh",
+    "fuelSubtitle": "⚠ Đèn L1 sắp cạn dầu (30) — châm dầu bằng E",
+    "reducedMotion": {
+      "hits": 1,
+      "flames": 2,
+      "shake": 0,
+      "flashOn": false,
+      "reducedMotion": true
+    },
+    "normalMotion": {
+      "hits": 1,
+      "flames": 2,
+      "shake": 0.09999999999999998,
+      "flashOn": true,
+      "reducedMotion": false
+    },
+    "largeTextMinFont": {
+      "min": 22.5,
+      "where": "small#. \"(cần 3)\""
+    },
+    "badName": {
+      "error": "Tên cần 3–12 ký tự",
+      "saveDisabled": true
+    },
+    "boardAfterReload": [
+      "1Long_18068901/32026-11-20 23:35",
+      "2Mây_Nhỏ00/32026-11-20 23:35"
+    ],
+    "minFontPerScreen": [
+      {
+        "screen": "menu",
+        "min": 18,
+        "where": "small#. \"(cần 3)\""
+      },
+      {
+        "screen": "settings",
+        "min": 18,
+        "where": "small#. \"(cần 3)\""
+      },
+      {
+        "screen": "keys",
+        "min": 18,
+        "where": "small#. \"(cần 3)\""
+      },
+      {
+        "screen": "hud",
+        "min": 18,
+        "where": "small#. \"(cần 3)\""
+      },
+      {
+        "screen": "result",
+        "min": 18,
+        "where": "small#. \"(cần 3)\""
+      },
+      {
+        "screen": "board",
+        "min": 18,
+        "where": "small#. \"(cần 3)\""
+      }
+    ],
+    "benchScene": {
+      "shades": 200,
+      "motes": 100,
+      "lit": 3
+    },
+    "exportCommand": {
+      "cmd": "node tools/serve.js --open --export-leaderboard docs/proof/phase-4/screens/leaderboard-export.json",
+      "exit": 0,
+      "stdout": "Đã xuất 2 mục bảng xếp hạng ($DATA_DIR/leaderboard.json) → ./docs/proof/phase-4/screens/leaderboard-export.json"
+    }
+  },
+  "problems": []
+}
