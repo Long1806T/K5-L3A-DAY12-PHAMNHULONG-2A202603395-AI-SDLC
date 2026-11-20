@@ -44,3 +44,10 @@ Quyết định thiết kế: [ADR 0001](../adr/0001-lantern-fuel-and-dawn-win.m
 | K3 | Đèn "đầy" | fuel đúng 100 (6000/6000 đơn vị). Sau một tick hao, đèn đã nhận được 1 đom đóm |
 | K4 | Điểm khi thua | Dòng `end` vẫn ghi điểm tích lũy của Đêm. Thưởng bình minh chỉ cộng khi thắng |
 | K5 | `fuel_drain` | Mỗi Bóng Mực có bộ đếm riêng: cứ đủ 60 tick hút liên tục thì ghi 1 sự kiện (fuel sau khi trừ) |
+
+## 4. Đánh giá Phase 3
+
+- **Đạt:** 15/15 tiêu chí ([bảng truy vết](../proof/phase-3/README.md)). 81 test xanh. Đêm dài nhất chạy headless trong khoảng 0,5 s. Bot thắng Đêm 1 với luật mới.
+- **Hồi quy:** 12 test cũ đỏ đúng chỗ luật bị thay. 10 test sửa kèm `P3:`, 2 test thắng sớm xóa có ghi lý do. Các test Phase 1–2 còn hiệu lực giữ nguyên và xanh.
+- **AI sai:** #15–#19 trong [ai-log.md](ai-log.md).
+- **Chỉnh harness:** `AGENTS.md` thêm luật "dầu tính bằng số nguyên", "luật dùng chung chỉ viết một lần", "không skip test"; sửa luật 7. Proof chạy thêm 7 scenario Phase 3 và hồi quy toàn bộ scenario Phase 1–2.

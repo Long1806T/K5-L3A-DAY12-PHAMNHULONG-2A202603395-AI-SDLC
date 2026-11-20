@@ -14,3 +14,17 @@
 - Snapshot/scenario/input theo v1.1 (`night`, `wind`, `player.vel/grounded/invuln/…`, `motes[].kind/ttl_s`, `drifters`, `charms`, input `dash`/`pause`, sự kiện `night_start` ở tick 0).
 
 **Mới:** 3 Đêm (Đảo Bến, Đảo Cau có cầu tre + bục nhảy, Đảo Chuông có 3 tầng, dốc, tháp chuông, gió mạnh), Lướt, rơi khỏi đảo + hồi sinh, Gió Lạc, Bùa Gió, tạm dừng; chuỗi 3 Đêm với menu, lời Ông Đăng, kết quả, Bình Minh; menu tạm dừng; cài đặt (âm lượng, độ nhạy chuột, lưu lại); nhạc nền + 10 hiệu ứng âm thanh tổng hợp; HUD đầy đủ theo bố cục ticket; bảng màu chuẩn.
+
+## phase-3 (2026-11-20): Ticket-03 "Đèn cạn dầu" + Test Contract v1.2
+Quyết định thiết kế: [ADR 0001](docs/adr/0001-lantern-fuel-and-dawn-win.md).
+
+**Thay đổi phá vỡ tương thích (breaking changes):**
+- `game_over.reason` không còn `all_lit`. Thắp hết đèn **không** kết thúc Đêm. Thắng chỉ xét ở bình minh với `dawn_survived` (≥ ceil(0,6 × tổng) đèn đang sáng).
+- Thời lượng Đêm 300/330/360 s → **240/270/300 s**.
+- Đèn đã sáng **nhận thêm đom đóm** (châm dầu, sự kiện `refuel`). Đèn hết dầu thì tắt (`lantern_out`), thắp lại chỉ cần 5 đom đóm.
+- Vùng an toàn chỉ còn ở đèn có fuel ≥ 30. Bóng Mực có trạng thái mới `drain`.
+- Công thức điểm thay toàn bộ: +5/đom đóm nạp (trước +10), thắp lần đầu +100, thắp lại +40, Tỏa Sáng +5 (+15 nếu Bóng Mực đang drain), bình minh +50 + floor(fuel) mỗi đèn sáng + 50 mỗi lửa. **Bỏ** thưởng thời gian.
+- Snapshot: đèn thêm `fuel`, `ever_lit`, `relit_count`; `player` thêm `capacity`. `lantern_lit` thêm `relight`. Sự kiện mới `refuel`, `lantern_out`, `fuel_drain`.
+- Sức chứa không còn cố định 10: 10 + 2 × số lần thắp thành công, tối đa 20.
+
+**Mới:** thanh dầu trên đèn, nhấp nháy 1 Hz khi dưới 30, nhắc "E — Châm dầu"/"Thắp lại"; chế độ "Bảng màu dễ phân biệt" (được lưu).

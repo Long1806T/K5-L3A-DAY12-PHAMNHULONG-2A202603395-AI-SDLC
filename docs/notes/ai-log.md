@@ -83,3 +83,33 @@ Cách tiết kiệm đã dùng:
 - Tính trước kỳ vọng của từng scenario bằng tay, nên 16 test tính năng xanh ngay lần chạy đầu.
 - Proof và capture là script: chạy lại không tốn token viết bằng chứng.
 - Chỉ xem 4–5 ảnh quan trọng, không xem hết 15 ảnh.
+
+## Phase 3 (Ticket-03 Change Request + Contract v1.2)
+
+### Các bước chính
+
+1. Dán Ticket-03. Agent viết **ADR 0001** (mô hình trạng thái đèn, trạng thái `drain`, luật thắng mới, thứ tự tick) và bảng "luật bị thay → test cũ sửa/xóa" **trước khi code**.
+2. Sửa core theo ADR. Dầu tính bằng số nguyên 1/60 như ticket gợi ý.
+3. Chạy test cũ: 12 test đỏ đúng chỗ luật bị thay. Mỗi test được sửa kèm comment `P3:`, hoặc xóa có ghi lý do. Không skip test nào.
+4. Viết `tests/fuel.test.js` (13 test) và 7 scenario Phase 3 với kỳ vọng tính tay theo thứ tự tick.
+5. Làm UI: thanh dầu, nhấp nháy 1 Hz, nhắc châm dầu/thắp lại, chế độ "Bảng màu dễ phân biệt" (được lưu).
+
+### Những lần AI sai và cách phát hiện
+
+| # | AI sai gì | Phát hiện bằng | Sửa và chỉnh harness |
+|---|---|---|---|
+| 15 | Bot cứ châm dầu (10 đom đóm cho 100 dầu) thay vì để tắt rồi thắp lại (5 đom đóm cho 100 dầu), nên không bao giờ giữ được 3 đèn | Tỉ lệ thắng của bot 0/8 | Đổi chiến thuật: ưu tiên thắp và thắp lại. Night 1 thắng 6/8 |
+| 16 | Test sức chứa đặt 22 đom đóm, 3 con nằm ngoài bán kính nhặt 1 m | Test đỏ (19 ≠ 20) | Xếp đom đóm sát nhau |
+| 17 | Test bot vẫn đòi đủ 5 đèn sáng (luật Phase 2) | Test đỏ | Sửa theo luật bình minh, kèm `P3:` |
+| 18 | HUD tự tính lại sức chứa thay vì dùng hàm của core (luật bị viết hai nơi) | Review diff | Dùng `capacity()` của core. Thêm vào `AGENTS.md`: luật dùng chung chỉ viết một lần |
+| 19 | Scenario đo tốc độ "đứng trong vùng an toàn" của Phase 2 không còn sống hết đêm vì đèn cạn dầu | Mây chết ở tick 5107 khi chạy thử | Scenario mới cho Mây 999 lửa. Sửa luật 7 trong `AGENTS.md` |
+
+### Token và chi phí Phase 3 (ước tính thô)
+
+- Output: khoảng 40–50 nghìn token.
+- Input tích lũy: khoảng 2–3 triệu token, phần lớn được cache.
+
+Cách tiết kiệm:
+
+- ADR và bảng "test bị ảnh hưởng" viết trước, nên khi chạy test cũ biết ngay đỏ chỗ nào là đúng.
+- Sửa core bằng các thay thế nhỏ có kiểm tra (script dừng nếu không tìm thấy đoạn cần thay), không viết lại cả file.
