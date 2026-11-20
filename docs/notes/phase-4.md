@@ -63,4 +63,20 @@ Mọi test Phase 1–3 khác được giữ nguyên. Proof §1 chạy lại nguy
 
 ## 5. Đánh giá Phase 4
 
-(Ghi sau khi chạy proof, ở cuối file.)
+- **Đạt:** 14/16 tiêu chí đạt trọn ([bảng truy vết](../proof/phase-4/README.md)).
+  - 94 test xanh.
+  - Test của `phase-3` chạy trên code mới: 80/81 đạt; test đỏ duy nhất là test số phiên bản contract, đã sửa kèm `P4:`.
+  - Soak: 0 crash, RSS ×1,10.
+  - Bảng xếp hạng, đổi phím, phụ đề, giảm chuyển động và chữ lớn đều được kiểm tra bằng thao tác thật trong trình duyệt.
+  - Clone sạch → 3 lệnh → chơi được.
+- **Chưa chứng minh được ở đây** (ghi thật):
+  - P4-5, FPS ≥ 60: máy làm bài không có GPU, bench chỉ được 0,8 FPS bằng SwiftShader. Cách đo đúng ticket; số thật do máy chấm đo, và `tools/release.js` đo lại trên máy có GPU.
+  - P4-14, tag và Release: môi trường làm bài không đẩy được tag, nên người dùng chạy `node tools/release.js` trên máy của mình.
+- **AI sai:** #21–#30 trong [ai-log.md](ai-log.md). Hai lỗi đáng nhớ nhất:
+  - Suýt "sửa" một chỗ rò bộ nhớ không có thật (#21).
+  - Chữ < 18 px tồn từ Phase 1–2 (#26).
+- **Chỉnh harness:**
+  - Luật 9 (chữ ≥ 18 px, có test chặn) và luật 10 (so heap với RSS) trong `AGENTS.md`.
+  - `npm test` chạy được trên Windows.
+  - Proof thêm soak/bench đúng lệnh contract và bước clone sạch.
+  - Capture thêm thao tác đổi phím, bảng xếp hạng và đo cỡ chữ.
