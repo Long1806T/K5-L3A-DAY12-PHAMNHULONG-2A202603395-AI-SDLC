@@ -210,6 +210,8 @@ const report = {
   warmup_s: BENCH.warmupS,
   resolution: result.info.canvas,
   window: `${result.info.inner} CSS px, devicePixelRatio ${result.info.dpr}${useXvfb ? ', Xvfb' : ''}${headless ? ', headless' : ''}`,
+  frame_ms_median: [...result.dts].sort((x, y) => x - y)[Math.floor(result.dts.length / 2)] ?? null,
+  frame_ms_max: Math.max(...result.dts),
   cpu_ms_avg: result.info.cpu_ms_avg,
   cpu_ms_p95: result.info.cpu_ms_p95,
   scene: { night: 1, shades: result.info.shades, motes: result.info.motes, lanterns_lit: result.info.lit, state_at_end: result.info.state },
