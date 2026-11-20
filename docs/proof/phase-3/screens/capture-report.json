@@ -1,0 +1,129 @@
+{
+  "when": "2026-11-20T15:44:54.218Z",
+  "viewport": "1280x720",
+  "renderer": "Chrome headless + SwiftShader (software WebGL, no GPU)",
+  "shots": [
+    {
+      "file": "docs/proof/phase-3/screens/01-fuel-bars.png",
+      "what": "Thanh dầu trên đèn sáng: L1 80 (bình thường), L2 25 (dưới 30: đỏ, ⚠, nhấp nháy 1 Hz), Bóng Mực đang hút L2 (drain)",
+      "mode": "playing",
+      "night": 1,
+      "tick": 192,
+      "state": "playing",
+      "score": 0,
+      "result": null
+    },
+    {
+      "file": "docs/proof/phase-3/screens/02-fuel-blink.png",
+      "what": "Nửa giây sau: đèn L2 và thanh dầu ở pha tắt của nhịp nhấp nháy 1 Hz",
+      "mode": "playing",
+      "night": 1,
+      "tick": 297,
+      "state": "playing",
+      "score": 0,
+      "result": null
+    },
+    {
+      "file": "docs/proof/phase-3/screens/03-refuel-prompt.png",
+      "what": "Đứng cạnh đèn đang sáng: nhắc \"E — Châm dầu (fuel/100)\"",
+      "mode": "playing",
+      "night": 1,
+      "tick": 165,
+      "state": "playing",
+      "score": 0,
+      "result": null
+    },
+    {
+      "file": "docs/proof/phase-3/screens/04-lantern-out.png",
+      "what": "Đèn cạn dầu → tắt (lantern_out), nhắc thắp lại chỉ cần 5 đom đóm",
+      "mode": "playing",
+      "night": 1,
+      "tick": 195,
+      "state": "playing",
+      "score": 0,
+      "result": null
+    },
+    {
+      "file": "docs/proof/phase-3/screens/05-colorblind.png",
+      "what": "Bảng màu dễ phân biệt: viền/mắt Bóng Mực #00B3FF đang hút L2 (bên trái, nhấp nháy), L1 đã tắt xẹp 20% có vết rách (bên phải), cảnh báo trắng + ⚠",
+      "mode": "playing",
+      "night": 1,
+      "tick": 180,
+      "state": "playing",
+      "score": 0,
+      "result": null
+    },
+    {
+      "file": "docs/proof/phase-3/screens/06-normal-colors.png",
+      "what": "Cùng cảnh với bảng màu thường để so sánh (viền tím #7A3CFF, đèn tắt không xẹp)",
+      "mode": "playing",
+      "night": 1,
+      "tick": 179,
+      "state": "playing",
+      "score": 0,
+      "result": null
+    },
+    {
+      "file": "docs/proof/phase-3/screens/07-dawn-survived.png",
+      "what": "Bình minh với 3/5 đèn sáng → thắng (dawn_survived), điểm bình minh",
+      "mode": "result",
+      "night": 1,
+      "tick": 60,
+      "state": "won",
+      "score": 597,
+      "result": {
+        "result": "won",
+        "reason": "dawn_survived",
+        "tick": 60
+      }
+    },
+    {
+      "file": "docs/proof/phase-3/screens/08-dawn-lost.png",
+      "what": "Bình minh với 2/5 đèn sáng → thua (dawn)",
+      "mode": "result",
+      "night": 1,
+      "tick": 60,
+      "state": "lost",
+      "score": 0,
+      "result": {
+        "result": "lost",
+        "reason": "dawn",
+        "tick": 60
+      }
+    }
+  ],
+  "checks": {
+    "fuelBars": [
+      {
+        "l": "L1",
+        "text": "78",
+        "low": false
+      },
+      {
+        "l": "L2",
+        "text": "⚠ 17",
+        "low": true
+      }
+    ],
+    "refuelPrompt": "E — Châm dầu (59/100)",
+    "afterRefuel": {
+      "id": "L1",
+      "pos": [
+        -15,
+        0,
+        19
+      ],
+      "lit": true,
+      "deposited": 10,
+      "fuel": 99.3,
+      "ever_lit": true,
+      "relit_count": 0
+    },
+    "colorBlind": {
+      "setting": true,
+      "bodyClass": "cb",
+      "danger": "#FFFFFF"
+    }
+  },
+  "problems": []
+}
