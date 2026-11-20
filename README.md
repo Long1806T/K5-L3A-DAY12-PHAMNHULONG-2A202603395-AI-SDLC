@@ -1,6 +1,6 @@
 # Đảo Đèn Lồng · v1.0.0
 
-> 🎬 **Video demo (dưới 5 phút):** [docs/demo/demo.mp4](docs/demo/demo.mp4). Video cũng được đính kèm ở [Release v1.0.0](https://github.com/Long1806T/K5-L3A-DAY12-PHAMNHULONG-2A202603395-AI-SDLC/releases/tag/v1.0.0).
+> 🎬 **Video demo (2 phút 22 giây):** [docs/demo/demo.mp4](docs/demo/demo.mp4). Video cũng được đính kèm ở [Release v1.0.0](https://github.com/Long1806T/K5-L3A-DAY12-PHAMNHULONG-2A202603395-AI-SDLC/releases/tag/v1.0.0). Nội dung: chơi 3 Đêm (autopilot điều khiển), các tính năng dễ tiếp cận và bảng xếp hạng, rồi output thật của test, headless, soak và bench.
 
 Game 3D góc nhìn thứ ba, gồm **3 Đêm**: Đảo Bến, Đảo Cau, Đảo Chuông. **Mây** là người giữ đèn nhỏ tuổi, mặc áo kem, quàng khăn
 đỏ, đội nón lá có treo đèn lồng. Mây gom đom đóm để thắp và **giữ cho các Đèn Lồng Lớn còn dầu** tới bình minh. Trên đường
@@ -9,7 +9,7 @@ Game 3D góc nhìn thứ ba, gồm **3 Đêm**: Đảo Bến, Đảo Cau, Đảo
 Game viết bằng JavaScript thuần. Phần logic tất định dùng chung cho trình duyệt và chế độ headless. Renderer WebGL tự viết,
 âm thanh tổng hợp bằng WebAudio. **Không dùng thư viện ngoài, không tải asset nào về.**
 
-![Đêm 1: thanh dầu trên đèn, Bóng Mực hút dầu đèn yếu](docs/demo/cover.png)
+![Đêm 1: Mây vừa thắp đèn L4, Bóng Mực xuất hiện (khung hình từ video demo)](docs/demo/cover.png)
 
 ## Yêu cầu hệ thống
 
