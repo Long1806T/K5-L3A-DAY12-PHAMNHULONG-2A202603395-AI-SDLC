@@ -1,0 +1,9 @@
+#!/bin/sh
+# Blocks a commit while the test suite is red.
+# Enable once per clone:  git config core.hooksPath .githooks
+log="${TMPDIR:-/tmp}/ddl-pre-commit.log"
+if ! npm test --silent >"$log" 2>&1; then
+  echo "pre-commit: tests are failing, commit blocked. Last lines of $log:"
+  tail -n 25 "$log"
+  exit 1
+fi

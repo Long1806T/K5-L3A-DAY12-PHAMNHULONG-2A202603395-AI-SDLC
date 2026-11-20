@@ -1,0 +1,20 @@
+{
+  "name": "dao-den-long",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Đảo Đèn Lồng: game 3D (WebGL, không thư viện ngoài) với chế độ headless theo Test Contract",
+  "type": "module",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "start": "node tools/serve.js --open",
+    "serve": "node tools/serve.js",
+    "headless": "node src/headless.js",
+    "test": "node --test tests/*.test.js",
+    "proof": "node tools/proof.js",
+    "capture": "node tools/capture.mjs",
+    "verify": "sh scripts/verify.sh"
+  }
+}
