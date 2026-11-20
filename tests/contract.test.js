@@ -40,6 +40,14 @@ test('the headless runner reads its tuning from game.contract.json (single sourc
   assert.deepEqual(loadTuning(), T);
 });
 
+test('src/core stays deterministic: no Math.random / Date / performance (AGENTS.md rule 1)', () => {
+  const dir = path.join(ROOT, 'src/core');
+  for (const f of fs.readdirSync(dir)) {
+    const code = fs.readFileSync(path.join(dir, f), 'utf8').replace(/\/\/.*$/gm, '');
+    assert.doesNotMatch(code, /Math\.random|Date\.now|new Date|performance\./, f);
+  }
+});
+
 test('design invariants we rely on', () => {
   assert.ok(T.safe_radius > T.interact_radius, 'depositing happens inside the safe zone');
   assert.ok(T.player_speed > T.shade_speed, 'the player can outrun shades');

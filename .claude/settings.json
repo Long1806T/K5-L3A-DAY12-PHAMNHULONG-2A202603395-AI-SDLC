@@ -1,0 +1,11 @@
+{
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          { "type": "command", "command": "sh scripts/verify.sh --hook", "timeout": 120 }
+        ]
+      }
+    ]
+  }
+}
