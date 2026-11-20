@@ -4,8 +4,9 @@
 // Dev-only: needs Playwright (npm i -g playwright) and Chrome/Chromium.
 //   node tools/capture.mjs [--out docs/proof/phase-2/screens]
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
-import { spawn } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 
@@ -14,6 +15,8 @@ const arg = (k, d) => (process.argv.includes(k) ? process.argv[process.argv.inde
 const PHASE = arg('--phase', '2');
 const OUT = path.resolve(ROOT, arg('--out', `docs/proof/phase-${PHASE}/screens`));
 const PORT = 5199;
+// the capture server keeps its leaderboard in a throw-away folder (exported into the report at the end)
+const DATA_DIR = fs.mkdtempSync(path.join(os.tmpdir(), 'ddl-capture-data-'));
 
 function loadPlaywright() {
   const require = createRequire(import.meta.url);
@@ -30,7 +33,7 @@ function loadPlaywright() {
 
 const startServer = () =>
   new Promise((resolve, reject) => {
-    const srv = spawn(process.execPath, [path.join(ROOT, 'tools/serve.js'), '--port', String(PORT)], { stdio: ['ignore', 'pipe', 'inherit'] });
+    const srv = spawn(process.execPath, [path.join(ROOT, 'tools/serve.js'), '--port', String(PORT)], { stdio: ['ignore', 'pipe', 'inherit'], env: { ...process.env, DDL_DATA_DIR: DATA_DIR } });
     srv.stdout.on('data', (d) => String(d).includes('http://') && resolve(srv));
     srv.on('error', reject);
     setTimeout(() => reject(new Error('server did not start')), 8000);
@@ -107,7 +110,162 @@ async function phase3() {
   await shot('08-dawn-lost', 'Bình minh với 2/5 đèn sáng → thua (dawn)');
 }
 
+/** Smallest computed font size of any visible text on the page right now (px). */
+const minFont = () =>
+  page.evaluate(() => {
+    let min = Infinity;
+    let where = '';
+    for (const el of document.querySelectorAll('body *')) {
+      if (!el.offsetParent && getComputedStyle(el).position !== 'fixed') continue;
+      if (![...el.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim())) continue;
+      const st = getComputedStyle(el);
+      if (st.visibility === 'hidden' || st.display === 'none' || Number(st.opacity) === 0) continue;
+      const fs = parseFloat(st.fontSize);
+      if (fs < min) [min, where] = [fs, `${el.tagName.toLowerCase()}#${el.id}.${el.className} "${el.textContent.trim().slice(0, 30)}"`];
+    }
+    return { min, where };
+  });
+
+async function phase4() {
+  const S4 = 'scenarios/phase4';
+  const fonts = [];
+  const font = async (screen) => fonts.push({ screen, ...(await minFont()) });
+  await open('?seed=7');
+  await page.evaluate(() => localStorage.clear());
+  await open('?seed=7');
+  await shot('01-menu', 'Menu chính có thêm "Bảng xếp hạng"');
+  await font('menu');
+  await act('settings');
+  await shot('02-settings', 'Cài đặt: phụ đề và chỉ báo, giảm chuyển động, chữ lớn ×1,25, đổi phím (đều được lưu)');
+  await font('settings');
+  await act('keys');
+  await page.click('[data-key="jump"]');
+  await page.keyboard.press('KeyE');
+  await page.waitForTimeout(200);
+  report.checks.remapConflictMessage = await page.evaluate(() => document.getElementById('keymsg').textContent);
+  await shot('03-remap-conflict', 'Đổi phím Nhảy sang E: phát hiện trùng với Tương tác, báo và đề nghị đổi chỗ');
+  await font('keys');
+  await act('swap-keys');
+  report.checks.afterSwap = await page.evaluate(() => ({ jump: window.__DDL.settings.keys.jump, interact: window.__DDL.settings.keys.interact }));
+  await page.click('[data-key="pulse"]');
+  await page.keyboard.press('KeyJ');
+  await page.waitForTimeout(150);
+  await shot('04-remap-saved', 'Sau khi đổi chỗ (Nhảy = E, Tương tác = Space) và đổi Tỏa sáng sang J');
+  await open('?seed=7');
+  report.checks.keysAfterReload = await page.evaluate(() => window.__DDL.settings.keys);
+  // the remapped keys drive the game: E now jumps, Space no longer does
+  await open(`?night=1&autostart=1&seed=1&scenario=${S4}/quiet.scenario.json`);
+  await page.waitForTimeout(400);
+  const j0 = await page.evaluate(() => window.__DDL.world.stats.jumps);
+  await page.keyboard.press('Space');
+  await page.waitForTimeout(700);
+  const j1 = await page.evaluate(() => window.__DDL.world.stats.jumps);
+  await page.keyboard.press('KeyE');
+  await page.waitForTimeout(700);
+  const j2 = await page.evaluate(() => window.__DDL.world.stats.jumps);
+  report.checks.remappedJump = { before: j0, afterSpace: j1, afterE: j2 };
+  await open('?seed=7');
+  await act('settings');
+  await act('keys');
+  await act('reset-keys');
+  report.checks.keysAfterReset = await page.evaluate(() => window.__DDL.settings.keys);
+  await shot('05-remap-reset', '"Khôi phục mặc định" đưa mọi phím về như cũ');
+
+  // captions and indicators (debug=1 lets the page step the core to the right moment)
+  await open(`?night=1&autostart=1&seed=3&debug=1&scenario=${S4}/shade-spawn.scenario.json`);
+  await page.evaluate(() => window.__DDL.advance(300));
+  await page.waitForTimeout(250);
+  report.checks.shadeSpawn = await page.evaluate(() => ({ subs: document.getElementById('subs').textContent, arrows: document.querySelectorAll('#shadearrows .shade-arrow').length, marks: document.querySelectorAll('#shadearrows .shade-mark').length }));
+  await shot('06-sub-shade', 'Bóng Mực xuất hiện: phụ đề + mũi tên tím ở mép màn hình chỉ hướng từng con');
+  await font('hud');
+  await open(`?night=3&autostart=1&seed=2&debug=1&scenario=${S4}/quiet.scenario.json`);
+  await page.evaluate(() => window.__DDL.advance(1680));
+  await page.waitForTimeout(250);
+  report.checks.windSubtitle = await page.evaluate(() => document.getElementById('subs').textContent);
+  await shot('07-sub-wind', 'Gió sắp thổi: phụ đề (kèm âm thanh gió)');
+  await open(`?night=1&autostart=1&seed=1&debug=1&scenario=${S4}/last-10s.scenario.json`);
+  await page.evaluate(() => window.__DDL.advance(70));
+  await page.waitForTimeout(250);
+  report.checks.last10Subtitle = await page.evaluate(() => document.getElementById('subs').textContent);
+  await shot('08-sub-last10', '10 giây cuối: phụ đề + đồng hồ đỏ nhấp nháy');
+  await open(`?night=1&autostart=1&seed=1&debug=1&scenario=${S4}/fuel-low.scenario.json`);
+  await page.evaluate(() => window.__DDL.advance(30));
+  await page.waitForTimeout(250);
+  report.checks.fuelSubtitle = await page.evaluate(() => document.getElementById('subs').textContent);
+  await shot('09-sub-fuel', 'Đèn xuống dưới 30 dầu: phụ đề + thanh dầu đỏ nhấp nháy');
+
+  // reduced motion: a hit gives no camera shake and no screen flash
+  await page.evaluate(() => localStorage.setItem('ddl.settings.v1', JSON.stringify({ reducedMotion: true })));
+  await open(`?night=1&autostart=1&seed=1&debug=1&scenario=${S4}/hit-now.scenario.json`);
+  // read the effect state in the same task as the hit, before any frame can decay it
+  report.checks.reducedMotion = await page.evaluate(() => (window.__DDL.advance(3), { hits: window.__DDL.world.stats.hits ?? null, flames: window.__DDL.world.player.flames, ...window.__DDL.fxState }));
+  await page.evaluate(() => localStorage.setItem('ddl.settings.v1', JSON.stringify({ reducedMotion: false })));
+  await open(`?night=1&autostart=1&seed=1&debug=1&scenario=${S4}/hit-now.scenario.json`);
+  report.checks.normalMotion = await page.evaluate(() => (window.__DDL.advance(3), { hits: window.__DDL.world.stats.hits ?? null, flames: window.__DDL.world.player.flames, ...window.__DDL.fxState }));
+
+  // large text ×1.25
+  await page.evaluate(() => localStorage.setItem('ddl.settings.v1', JSON.stringify({ largeText: true })));
+  await open(`?night=1&autostart=1&seed=1&scenario=${S4}/fuel-low.scenario.json`);
+  await page.waitForTimeout(600);
+  report.checks.largeTextMinFont = await minFont();
+  await shot('10-large-text', 'Chữ lớn ×1,25: mọi chữ trên HUD ≥ 22,5 px');
+  await page.evaluate(() => localStorage.setItem('ddl.settings.v1', JSON.stringify({})));
+
+  // leaderboard: lose a night → name entry → board (stored on disk by tools/serve.js)
+  await open(`?night=1&autostart=1&seed=11&scenario=${S4}/lose-at-dawn.scenario.json`);
+  await page.waitForFunction(() => window.__DDL.mode === 'result', null, { timeout: 20000 });
+  await page.fill('#pname', 'ab');
+  await page.waitForTimeout(150);
+  report.checks.badName = await page.evaluate(() => ({ error: document.getElementById('pname-err').textContent, saveDisabled: document.getElementById('save-score').disabled }));
+  await shot('11-name-invalid', 'Thua Đêm → nhập tên; "ab" quá ngắn: báo lỗi, nút Lưu bị khóa');
+  await font('result');
+  await page.fill('#pname', 'Mây_Nhỏ');
+  await page.click('#save-score');
+  await page.waitForFunction(() => window.__DDL.mode === 'board', null, { timeout: 10000 });
+  await page.waitForTimeout(300);
+  await shot('12-board-after-loss', 'Đã lưu tên tiếng Việt có dấu, bảng xếp hạng tô sáng dòng vừa lưu');
+  await font('board');
+  // win Night 3 at dawn → Bình Minh → name entry
+  await open(`?night=3&autostart=1&seed=21&scenario=${S4}/dawn-night3.scenario.json`);
+  await page.waitForFunction(() => window.__DDL.mode === 'result', null, { timeout: 20000 });
+  await act('dawn');
+  await page.waitForTimeout(200);
+  await shot('13-dawn-name', 'Thắng Đêm 3 → màn Bình Minh có ô nhập tên để lưu điểm');
+  await page.fill('#pname', 'Long_1806');
+  await page.click('#save-score');
+  await page.waitForFunction(() => window.__DDL.mode === 'board', null, { timeout: 10000 });
+  await page.waitForTimeout(300);
+  await shot('14-board-after-dawn', 'Bảng xếp hạng sau khi lưu ở màn Bình Minh (điểm cao hơn đứng trên)');
+  // the board is still there after closing and reopening the game
+  await page.evaluate(() => localStorage.clear());
+  await open('?seed=7');
+  await act('board');
+  await page.waitForFunction(() => window.__DDL.mode === 'board', null, { timeout: 10000 });
+  await page.waitForTimeout(300);
+  report.checks.boardAfterReload = await page.evaluate(() => [...document.querySelectorAll('table.board tr')].slice(1).map((tr) => tr.textContent));
+  await shot('15-board-from-menu', 'Mở lại game (đã xóa dữ liệu trình duyệt) → menu → Bảng xếp hạng: dữ liệu vẫn còn (lưu trên đĩa)');
+  report.checks.minFontPerScreen = fonts;
+
+  // the benchmark scene itself (tools/bench.js measures it; here only a picture)
+  await page.goto(`http://localhost:${PORT}/index.html?bench=1&seed=42&duration=60`);
+  await page.waitForFunction(() => window.__BENCH && window.__BENCH.first !== null, null, { timeout: 30000 });
+  await page.waitForTimeout(2500);
+  report.checks.benchScene = await page.evaluate(() => ({ shades: window.__BENCH.world.shades.length, motes: window.__BENCH.world.motes.length, lit: window.__BENCH.world.lanterns.filter((l) => l.lit).length }));
+  await shot4bench('16-bench-scene', 'Cảnh benchmark chuẩn: Đêm 1, 200 Bóng Mực wander, 100 đom đóm, L1–L3 sáng, camera bay vòng r = 30 m, y = 15 m');
+}
+
+async function shot4bench(name, what) {
+  const file = path.join(OUT, `${name}.png`);
+  await page.screenshot({ path: file });
+  report.shots.push({ file: path.relative(ROOT, file), what, mode: 'bench' });
+  console.log(`saved ${path.relative(ROOT, file)} (bench)`);
+}
+
 try {
+  if (PHASE === '4') {
+    await phase4();
+    throw Object.assign(new Error('done'), { done: true });
+  }
   if (PHASE === '3') {
     await phase3();
     throw Object.assign(new Error('done'), { done: true });
@@ -217,6 +375,12 @@ try {
 } catch (e) {
   if (!e.done) throw e;
 } finally {
+  if (PHASE === '4') {
+    // run_cmd --export-leaderboard on the same data the page just wrote
+    const exp = path.join(OUT, 'leaderboard-export.json');
+    const r = spawnSync(process.execPath, [path.join(ROOT, 'tools/serve.js'), '--open', '--export-leaderboard', exp], { env: { ...process.env, DDL_DATA_DIR: DATA_DIR }, encoding: 'utf8' });
+    report.checks.exportCommand = { cmd: `node tools/serve.js --open --export-leaderboard ${path.relative(ROOT, exp)}`, exit: r.status, stdout: r.stdout.trim().split(DATA_DIR).join('$DATA_DIR').split(ROOT).join('.') };
+  }
   report.problems = problems;
   fs.writeFileSync(path.join(OUT, 'capture-report.json'), JSON.stringify(report, null, 2) + '\n');
   await browser.close();

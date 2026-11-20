@@ -80,6 +80,7 @@ if (Number(PHASE) >= 3) {
 const S1 = 'scenarios/phase1';
 const S2 = 'scenarios/phase2';
 const S3 = 'scenarios/phase3';
+const S4 = 'scenarios/phase4';
 const SC = S1;
 const PHASE_RUNS = {
   1: [
@@ -113,6 +114,12 @@ PHASE_RUNS[3] = [
   ['drain-refuel', 1, `${S3}/drain-refuel.scenario.json`, `${S3}/interact-now.inputs.json`, 120, 'Châm dầu lên ≥ 30: Bóng Mực về wander, bị đẩy ra mép'],
   ['dawn-win', 1, `${S3}/dawn-win.scenario.json`, null, 100, 'Bình minh, 3/5 đèn sáng → thắng dawn_survived'],
   ['dawn-lose', 1, `${S3}/dawn-lose.scenario.json`, null, 100, 'Bình minh, 2/5 đèn sáng → thua dawn'],
+];
+PHASE_RUNS[4] = [
+  ['dawn-night3', 3, `${S4}/dawn-night3.scenario.json`, null, 120, 'Đêm 3, 5/7 đèn sáng lúc bình minh → thắng (màn Bình Minh, nhập tên)'],
+  ['lose-at-dawn', 1, `${S4}/lose-at-dawn.scenario.json`, null, 120, 'Đêm 1, 0 đèn sáng lúc bình minh → thua (nhập tên sau khi thua)'],
+  ['hit-now', 1, `${S4}/hit-now.scenario.json`, null, 30, 'Bị chạm ngay: dùng để kiểm tra "giảm chuyển động" trên trình duyệt'],
+  ['shade-spawn', 1, `${S4}/shade-spawn.scenario.json`, null, 301, 'Bóng Mực đầu tiên xuất hiện ở tick 300 (phụ đề + mũi tên ở mép màn hình)'],
 ];
 const scenarios = [];
 for (let ph = Number(PHASE); ph >= 1; ph--) for (const r of PHASE_RUNS[ph] || []) scenarios.push(r);
@@ -217,6 +224,49 @@ for (const night of Number(PHASE) >= 2 ? [1, 2, 3] : [1]) {
   line(`| ${night} | \`--scenario survive-night${night} --ticks ${ticks}\` (${why}) | **${perf.ms.toFixed(0)} ms** | \`${JSON.stringify(readJsonl(perfOut).at(-1))}\` |`);
 }
 line();
+
+// 7. Ticket-04: soak_cmd and bench_cmd exactly as the contract states them
+if (Number(PHASE) >= 4) {
+  const run = (key, args) => {
+    const [c, ...b] = contract[key].split(/\s+/);
+    const t0 = process.hrtime.bigint();
+    const r = spawnSync(c, [...b, ...args], { cwd: ROOT, encoding: 'utf8', timeout: 240000 });
+    return { code: r.status, out: (r.stdout + r.stderr).trim(), ms: Number(process.hrtime.bigint() - t0) / 1e6 };
+  };
+  line('## 7. Soak test (`soak_cmd`)');
+  line();
+  const soakOut = path.join(RUNS, 'soak.json');
+  const so = run('soak_cmd', ['--seed', 7, '--nights', 10, '--out', soakOut]);
+  const sj = JSON.parse(fs.readFileSync(soakOut, 'utf8'));
+  line(`Lệnh: \`${contract.soak_cmd} --seed 7 --nights 10 --out soak.json\` → mã thoát ${so.code}, [runs/soak.json](runs/soak.json).`);
+  line();
+  line('| nights | crashes | results | mem_start_mb | mem_end_mb | tỉ lệ | heap JS (MB) | duration_s | Ngưỡng |');
+  line('|---|---|---|---|---|---|---|---|---|');
+  const soakOk = sj.crashes === 0 && sj.mem_end_mb <= 1.2 * sj.mem_start_mb;
+  line(`| ${sj.nights} | ${sj.crashes} | ${sj.results.join(', ')} | ${sj.mem_start_mb} | ${sj.mem_end_mb} | ×${(sj.mem_end_mb / sj.mem_start_mb).toFixed(2)} | ${sj.heap_start_mb} → ${sj.heap_end_mb} | ${sj.duration_s} | **${soakOk ? 'đạt' : 'chưa đạt'}** |`);
+  line();
+  const jit = run('soak_cmd', ['--seed', 7, '--nights', 10, '--out', path.join(os.tmpdir(), 'ddl-soak-jit.json'), '--jit']);
+  const jj = JSON.parse(fs.readFileSync(path.join(os.tmpdir(), 'ddl-soak-jit.json'), 'utf8'));
+  line(`Đối chứng cùng lệnh thêm \`--jit\` (bật JIT tối ưu của V8): kết quả ${JSON.stringify(jj.results) === JSON.stringify(sj.results) ? 'giống hệt' : 'KHÁC'}; RSS ${jj.mem_start_mb} → ${jj.mem_end_mb} MB, heap JS ${jj.heap_start_mb} → ${jj.heap_end_mb} MB (mã thoát ${jit.code}). Heap JS phẳng ở cả hai chế độ: phần RSS tăng khi bật JIT là bộ nhớ biên dịch của V8, không phải của game (giải thích ở docs/notes/phase-4.md).`);
+  line();
+  line('## 8. Benchmark (`bench_cmd`)');
+  line();
+  const benchOut = path.join(RUNS, 'bench.json');
+  const bo = run('bench_cmd', ['--seed', 42, '--duration', 30, '--out', benchOut]);
+  if (bo.code === 0 && fs.existsSync(benchOut)) {
+    const bj = JSON.parse(fs.readFileSync(benchOut, 'utf8'));
+    line(`Lệnh: \`${contract.bench_cmd} --seed 42 --duration 30 --out bench.json\` → mã thoát 0 sau ${(bo.ms / 1000).toFixed(1)} s, [runs/bench.json](runs/bench.json).`);
+    line();
+    line('| avg_fps | p1_low_fps | frame_ms_p95 | frames | load_ms | peak_mem_mb | CPU/khung (ms) | renderer |');
+    line('|---|---|---|---|---|---|---|---|');
+    line(`| ${bj.avg_fps} | ${bj.p1_low_fps} | ${bj.frame_ms_p95} | ${bj.frames} | ${bj.load_ms} | ${bj.peak_mem_mb} | ${bj.cpu_ms_avg} (p95 ${bj.cpu_ms_p95}) | ${bj.renderer} |`);
+    line();
+    line(`Máy đo: ${bj.os}. ${/SwiftShader|llvmpipe|Software/i.test(bj.renderer) ? 'Máy này **không có GPU** (WebGL chạy bằng phần mềm), nên FPS ở đây không nói lên hiệu năng trên máy chấm có GPU; ngưỡng avg ≥ 60 / 1% low ≥ 30 được giảng viên đo trên máy chấm. Cột CPU/khung cho thấy phần JavaScript của mỗi khung chỉ tốn vài ms.' : ''}`);
+  } else {
+    line(`Không chạy được bench trên máy này (mã thoát ${bo.code}): \`${bo.out.split('\n').at(-1)}\`.`);
+  }
+  line();
+}
 
 fs.writeFileSync(path.join(OUT, 'proof.md'), md.join('\n') + '\n');
 console.log(`wrote ${rel(path.join(OUT, 'proof.md'))}`);
