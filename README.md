@@ -1,16 +1,16 @@
 # Đảo Đèn Lồng
 
 > **Video demo:** sẽ đính kèm ở Release `v1.0.0` (Phase 4).
-> Phase hiện tại: **Phase 1 (PRD-0, Test Contract v1.0)**, tag `phase-1`.
+> Phase hiện tại: **Phase 2 (Ticket-02 "Ba hòn đảo", Test Contract v1.1)**.
 
-Game 3D góc nhìn thứ ba. **Mây**, người giữ đèn nhỏ tuổi đội nón lá có treo đèn lồng, chạy khắp **Đảo Bến** gom đom đóm
-để thắp lại **5 Đèn Lồng Lớn** trước bình minh, né **Bóng Mực** tím đen trong sương. Thắp hết đèn thì thắng, mất hết lửa
-hoặc trời sáng mà chưa xong thì thua.
+Game 3D góc nhìn thứ ba qua **3 Đêm**: Đảo Bến, Đảo Cau, Đảo Chuông. **Mây** là người giữ đèn nhỏ tuổi, mặc áo kem, quàng
+khăn đỏ, đội nón lá có treo đèn lồng. Mây gom đom đóm để thắp lại các **Đèn Lồng Lớn** trước bình minh, né **Bóng Mực**
+tím đen và giữ đom đóm khỏi tay **Gió Lạc**.
 
-Game viết bằng JavaScript thuần: logic tất định dùng chung cho trình duyệt và chế độ headless, renderer WebGL tự viết.
-**Không có thư viện ngoài, không asset tải về.**
+Game viết bằng JavaScript thuần: logic tất định dùng chung cho trình duyệt và chế độ headless, renderer WebGL tự viết,
+âm thanh tổng hợp bằng WebAudio. **Không có thư viện ngoài, không asset tải về.**
 
-![Đang chơi](docs/proof/phase-1/screens/02-playing.png)
+![Đêm 2: cầu tre, Bùa Gió và Gió Lạc](docs/proof/phase-2/screens/07-night2-bridge.png)
 
 ## Cài đặt và chạy (3 lệnh)
 
@@ -22,8 +22,7 @@ cd K5-L3A-DAY12-PHAMNHULONG-2A202603395-AI-SDLC
 npm start            # mở http://localhost:5173 (nếu không tự mở, dán link vào trình duyệt)
 ```
 
-`npm install` (`build_cmd` trong contract) không tải gì vì dự án không có dependency. Tham số `?seed=123` cố định seed;
-`?scenario=scenarios/phase1/pulse.scenario.json` mở game bằng một file scenario của contract.
+`npm install` (`build_cmd`) không tải gì vì dự án không có dependency.
 
 ## Điều khiển
 
@@ -31,80 +30,79 @@ npm start            # mở http://localhost:5173 (nếu không tự mở, dán 
 |---|---|
 | `W A S D` | đi lại, theo hướng camera |
 | `Space` | nhảy |
-| `E` | nạp ánh sáng (đom đóm đang mang) vào Đèn Lồng Lớn gần nhất |
-| `F` / `Shift` / chuột phải | tỏa sáng: xua Bóng Mực quanh mình |
+| `Shift` | lướt (14 m/s trong 0,2 s, hồi 1,5 s) |
+| `E` | nạp ánh sáng vào Đèn Lồng Lớn gần nhất |
+| `F` / chuột phải | tỏa sáng: xua Bóng Mực, đuổi Gió Lạc (tốn 3 đom đóm) |
 | kéo chuột trái, `←` `→` | xoay camera; lăn chuột để zoom |
-| `P` / `Esc` | tạm dừng |
-| `R` / `Enter` | chơi lại (sau khi thắng/thua) |
+| `Esc` / `P` | tạm dừng: Tiếp tục, Chơi lại Đêm, Cài đặt, Về menu |
 
-## Luật chơi và cách tính điểm
+## Luật chơi (số chuẩn của Ticket-02)
 
 Các con số lấy từ `game.contract.json`, cũng là file game đọc lúc chạy.
 
-- **Đom đóm**: đi tới trong 1,2 m là nhặt tự động. Mang tối đa 8 con.
-- **Đèn Lồng Lớn**: đứng trong 2,5 m, bấm `E` để nạp. Đèn cần 5 đom đóm; mang dư thì phần dư giữ lại. Đèn sáng thì đảo ấm dần lên.
-- **Vùng an toàn**: Bóng Mực không vào được bán kính 4 m quanh **mọi** Đèn Lồng Lớn. Đứng trong vùng này không bị chạm.
-- **Bóng Mực**: luôn đuổi theo (3,5 m/s, chậm hơn Mây 6 m/s). Bị chạm (0,9 m) thì mất 1 ngọn lửa, đánh rơi `floor(đang mang × 0,5)` đom đóm (chúng bay mất vào sương) và bất tử 1,5 s.
-- **Tỏa sáng**: tốn 1 đom đóm. Mọi Bóng Mực trong 6 m bị choáng 3 s và bị đẩy lùi 4 m. Hồi chiêu 2 s.
-- **Thời gian**: 5 phút. Hết giờ là thua (`dawn`). Có 3 ngọn lửa; hết lửa là thua (`no_flames`).
-- **Điểm**: +10 mỗi đom đóm nhặt, +100 mỗi đèn thắp, +25 mỗi Bóng Mực bị choáng. Khi **thắng** cộng thêm 2 × số giây còn lại (làm tròn xuống) + 50 × số lửa còn lại.
+- **Đom đóm**: tự nhặt khi cách ≤ 1 m (và chênh cao ≤ 1,5 m), mang tối đa 10. Lúc đầu có 20 con, cứ 4 s sinh thêm 1 con.
+- **Đèn Lồng Lớn**: đứng trong 2 m, bấm `E` để nạp. Cần 10 đom đóm, nạp nhiều lần được. Đèn sáng tạo vùng an toàn 6 m chặn Bóng Mực.
+- **Bóng Mực**: xuất hiện từ giây thứ 5, đuổi khi Mây cách ≤ 12 m, bỏ đuổi khi > 18 m. Chạm Mây thì Mây mất 1 Ngọn Lửa, đom đóm rơi ra quanh Mây (8 s để nhặt lại), Mây bất tử 1,5 s.
+- **Gió Lạc** (Đêm 2–3): bám theo khi Mây mang ≥ 5 đom đóm, cướp tối đa 3 con rồi bỏ chạy. Tỏa Sáng trúng thì nó bỏ chạy, hoặc nhả lại đồ đã cướp.
+- **Bùa Gió** (Đêm 2–3): trong 10 s chạy 7,2 m/s và lướt không cần hồi chiêu.
+- **Rơi khỏi đảo**: mất 1 Ngọn Lửa và toàn bộ đom đóm, 1 s sau hồi sinh ở điểm xuất phát.
+- **Thắng**: thắp hết đèn trước bình minh (5 / 6 / 7 đèn, 5 / 5,5 / 6 phút). **Thua**: hết 3 Ngọn Lửa hoặc trời sáng.
+- **Điểm**: +10 mỗi đom đóm nạp, +100 mỗi đèn thắp, +5 mỗi Bóng Mực trúng Tỏa Sáng. Khi thắng cộng thêm 2 × số giây còn lại + 50 × số Ngọn Lửa còn lại. Tổng điểm game là tổng các Đêm đã thắng.
 
-Các giả định cho chỗ PRD-0 còn mơ hồ (vì sao chọn như trên) nằm ở [docs/notes/phase-1.md](docs/notes/phase-1.md#2-giả-định-cho-chỗ-prd-0-còn-mơ-hồ).
+Giả định cho chỗ ticket chưa nói: [docs/notes/phase-2.md](docs/notes/phase-2.md#3-giả-định-cho-chỗ-ticket-chưa-nói).
 
-## Chế độ headless (Test Contract v1.0)
+## Chế độ headless (Test Contract v1.1)
 
 ```bash
-node src/headless.js --seed 1 --night 1 --ticks 600 --out out.jsonl \
-  [--scenario scenarios/phase1/pulse.scenario.json] [--inputs scenarios/phase1/pulse.inputs.json] [--snapshot-every 10]
+node src/headless.js --seed 1 --night 1|2|3 --ticks 600 --out out.jsonl \
+  [--scenario scenarios/phase2/charm.scenario.json] [--inputs scenarios/phase2/charm.inputs.json] [--snapshot-every 10]
 ```
 
-- 60 tick/giây cố định, không cần cửa sổ hay GPU. Một đêm 18 000 tick chạy khoảng 0,1 s.
-- Ghi JSONL gồm snapshot, event và dòng `end` cuối cùng, đúng định dạng contract. Cùng seed, scenario và inputs luôn cho output giống hệt.
-- Mã thoát: `0` khi chạy xong, `2` khi file scenario/inputs sai định dạng, `1` cho lỗi khác (thiếu tham số, night không có…). Thông báo lỗi ghi ra stderr.
+- 60 tick/giây cố định, không cần cửa sổ hay GPU. Một Đêm dài nhất (21 600 tick) chạy trong khoảng 0,5 s.
+- Ghi JSONL gồm snapshot (v1.1), các sự kiện (kể cả `night_start` ở tick 0) và dòng `end` cuối cùng. Cùng seed, scenario và inputs luôn cho output giống hệt.
+- Mã thoát: `0` khi chạy xong, `2` khi file scenario/inputs sai định dạng, `1` cho lỗi khác.
 
 ## Test và bằng chứng
 
 ```bash
-npm test                         # 48 test: luật chơi, CLI, mã thoát, tất định, chơi trọn đêm
+npm test                         # 70 test: luật chuẩn, mỗi tính năng một scenario qua CLI, bản đồ, tất định, bảng màu
 sh scripts/verify.sh             # test + một lượt headless (cũng là lệnh của hook)
-npm run proof -- --phase 1       # sinh lại docs/proof/phase-1/proof.md từ các lần chạy thật
-node tools/capture.mjs           # (dev, cần Playwright + Chrome) chơi trong Chrome headless và chụp ảnh
+npm run proof -- --phase 2       # sinh lại docs/proof/phase-2/ từ các lần chạy thật
+node tools/capture.mjs           # (dev, cần Playwright + Chrome) chơi trong Chrome headless, chụp ảnh, đếm âm thanh, đo FPS
 ```
 
-- Bảng truy vết yêu cầu → bằng chứng: [docs/proof/phase-1/README.md](docs/proof/phase-1/README.md)
-- Bằng chứng tự sinh: [docs/proof/phase-1/proof.md](docs/proof/phase-1/proof.md), ảnh trong [docs/proof/phase-1/screens/](docs/proof/phase-1/screens/)
+- Bảng truy vết: [Phase 1](docs/proof/phase-1/README.md) · [Phase 2](docs/proof/phase-2/README.md)
 - CI: `.github/workflows/ci.yml` chạy test trên Node 18/20/22 mỗi lần push.
 
 ## Cấu trúc
 
 ```text
 game.contract.json      Test Contract: lệnh + tuning (game đọc trực tiếp file này)
-src/core/               logic thuần, tất định (sim, rng, level, inputs, validate)
+src/core/               logic thuần, tất định (sim, level/bản đồ, rules, rng, inputs, validate)
 src/headless.js         CLI headless theo contract
-src/web/                renderer WebGL, model low-poly, HUD, điều khiển
+src/web/                renderer WebGL, model low-poly, HUD, âm thanh, cài đặt, menu
 index.html              trang game
-scenarios/phase1/       scenario + inputs mẫu (cả file lỗi trong bad/)
+scenarios/phase1|2/     scenario + inputs mẫu (cả file lỗi trong bad/)
 tests/                  node:test
 tools/                  serve (server tĩnh), bot (autopilot), proof, capture
 docs/notes/             yêu cầu, giả định, đánh giá từng phase, nhật ký dùng AI
-docs/proof/phase-1/     bằng chứng Phase 1
-docs/lab/               đề bài gốc của lab
+docs/proof/phase-N/     bằng chứng từng phase
 AGENTS.md, CLAUDE.md, .claude/, .githooks/, scripts/   harness cho AI agent
 ```
 
 ## Sáng tạo của tôi
 
-- **Đường đá dẫn lối** từ chỗ xuất phát tới từng Đèn Lồng Lớn, giúp định hướng trong đêm.
-- **Đom đóm bay quanh Mây**: số con bay đúng bằng số đang mang. Đèn nhỏ trên nón sáng và lan xa hơn khi mang nhiều.
-- **Đảo Bến** có bến gỗ, hai nhà chòi, rừng thông, biển mây bên dưới, trời sao và trăng.
-- **Bóng Mực trồi lên từ sương** (1 s vô hại) khi tự sinh. Khi bị choáng chúng nhạt màu và có sao xoay trên đầu.
+- **Đường đá dẫn lối** từ chỗ xuất phát tới từng Đèn Lồng Lớn trên cùng tầng.
+- **Đom đóm bay quanh Mây**: số con bay đúng bằng số đang mang. Đèn trên nón sáng và lan xa hơn khi mang nhiều.
+- **Đảo Bến** có bến gỗ và hai nhà chòi. Biển mây, trời sao và trăng hiện ở cả 3 Đêm.
+- **Bóng Mực trồi lên từ sương** (trạng thái `spawning`). Khi bị choáng chúng đổi màu và có sao xoay trên đầu.
+- **Gió Lạc** là một dải lụa uốn lượn theo hướng bay. Khi đang ôm đom đóm cướp được, nó sáng hơn.
 
-Phần lõi vẫn đúng: tất cả nằm trong `src/web/` (chỉ vẽ), trừ trạng thái `emerge`. `emerge` là giả định G11, chỉ áp dụng
-cho Bóng Mực tự sinh; Bóng Mực trong scenario vào `chase` ngay như contract yêu cầu (test
-`random_motes/shades false…`, `shades chase at shade_speed`). Ảnh: [screens/](docs/proof/phase-1/screens/).
+Phần lõi vẫn đúng: tất cả chỉ nằm trong `src/web/`. Bộ test headless (70 test) không đổi khi bỏ phần hình ảnh.
+Ảnh: [docs/proof/phase-2/screens/](docs/proof/phase-2/screens/).
 
 ## Ghi chép
 
-- Phase 1: [docs/notes/phase-1.md](docs/notes/phase-1.md) (tiêu chí nghiệm thu, giả định, đánh giá)
+- [Phase 1](docs/notes/phase-1.md) · [Phase 2](docs/notes/phase-2.md): yêu cầu, giả định, đánh giá
 - Nhật ký dùng AI (token, lỗi của AI, chỉnh harness): [docs/notes/ai-log.md](docs/notes/ai-log.md)
 - [CHANGELOG.md](CHANGELOG.md) · [CREDITS.md](CREDITS.md) · [LICENSE](LICENSE)

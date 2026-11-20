@@ -60,3 +60,11 @@ Ticket-02 **thay mọi số tự chọn** bằng số chuẩn. Các quyết đ�
 | H13 | Điểm khi thua | Dòng `end` ghi điểm tích lũy của Đêm. Tổng điểm game (UI) chỉ cộng các Đêm thắng |
 | H14 | Hướng gió | Mỗi cơn có hướng riêng theo seed. `dir_deg` dùng cùng quy ước góc H1. Báo trước 120 tick |
 | H15 | Đom đóm rơi rơi vào hư không | Thử tối đa 12 điểm trên vành 1,5–2,5 m; không có mặt đất thì đặt tại chân Mây |
+
+## 4. Đánh giá Phase 2
+
+- **Đạt:** 21/22 tiêu chí ([bảng truy vết](../proof/phase-2/README.md)). 70 test xanh. Tất định trên cả 3 Đêm. Đêm dài nhất chạy headless dưới 0,5 s.
+- **Chưa chứng minh được:** P2-22 (≥ 30 FPS). Máy đo không có GPU, render phần mềm chỉ đạt vài FPS. Phần việc JS của game mỗi khung chỉ ~1 ms. Cần đo trên máy thật.
+- **Hồi quy:** test Phase 1 chạy lại với số chuẩn. 9 test đổi kỳ vọng, có comment `P2:` ghi lý do. Không test nào bị skip.
+- **AI sai:** 7 lỗi (#8–#14 trong [ai-log.md](ai-log.md)), đều bắt được nhờ test đỏ hoặc nhờ capture tự kiểm tra.
+- **Chỉnh harness:** `AGENTS.md` cập nhật cho 3 Đêm và thứ tự tick, thêm luật 8 (chốt phím). Skill `verify-game` thêm bước scenario theo Đêm, âm thanh, FPS. Capture coi mọi lỗi console là thất bại.
