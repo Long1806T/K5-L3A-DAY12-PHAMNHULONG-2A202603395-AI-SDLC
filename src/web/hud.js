@@ -3,9 +3,29 @@
 // cooldowns bottom-right, a lantern prompt and an off-screen lantern arrow.
 
 import { distXZ, timeLeftExact, isWeak, lightCost, fuelValue, winThreshold, capacity, FUEL_UNITS } from '../core/sim.js';
+import { keyLabel } from './settings.js';
 
 const FLAME_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2c-1 4-6 7-6 12a6 6 0 0 0 12 0c0-3-1.6-5-3-6.5.2 2-1 3.5-2.4 3.5C14 8 13.5 5 12 2z"/></svg>';
 const $ = (id) => document.getElementById(id);
+
+/** Clip-space projection of a world point: { nx, ny, cw } (cw ≤ 0 = behind the camera). */
+function project(view, P) {
+  const m = view.viewProj;
+  const cw = m[3] * P[0] + m[7] * P[1] + m[11] * P[2] + m[15];
+  return { nx: (m[0] * P[0] + m[4] * P[1] + m[8] * P[2] + m[12]) / cw, ny: (m[1] * P[0] + m[5] * P[1] + m[9] * P[2] + m[13]) / cw, cw };
+}
+
+/** Point on the screen edge in the direction of an off-screen projection, with the arrow angle. */
+function edgeOf({ nx, ny, cw }) {
+  if (cw < 0) {
+    nx = -nx;
+    ny = -ny;
+  }
+  const k = 0.88 / Math.max(Math.abs(nx), Math.abs(ny), 1e-6);
+  const ex = nx * k;
+  const ey = ny * k;
+  return { x: ((ex + 1) / 2) * window.innerWidth, y: ((1 - ey) / 2) * window.innerHeight, angle: Math.atan2(-ey, ex) };
+}
 
 export class Hud {
   constructor(tuning) {
@@ -13,6 +33,26 @@ export class Hud {
     this.toastUntil = 0;
     this.cache = {};
     this.reducedMotion = false;
+    this.subtitlesOn = true;
+    this.keys = null; // keymap from settings, for on-screen key hints
+    this.subs = []; // { text, until, warn }
+    this.marks = []; // { id, until }: newly spawned shades to point at
+  }
+
+  /** Caption / visual indicator for a sound cue (Ticket-04 §4). */
+  subtitle(text, now, seconds = 3, warn = true) {
+    if (!this.subtitlesOn) return;
+    const old = this.subs.find((s) => s.text === text);
+    if (old) old.until = now + seconds;
+    else this.subs.push({ text, until: now + seconds, warn });
+    if (this.subs.length > 3) this.subs.shift();
+  }
+
+  /** Point at a shade for a few seconds: edge arrow when off screen, ⚠ above it when visible. */
+  markShade(id, now, seconds = 3) {
+    if (!this.subtitlesOn) return;
+    this.marks = this.marks.filter((m) => m.id !== id);
+    this.marks.push({ id, until: now + seconds });
   }
 
   set(id, html) {
@@ -81,8 +121,9 @@ export class Hud {
         if ((L.lit && L.fuel >= T.fuel_max * FUEL_UNITS) || distXZ(L.pos, p.pos) > T.interact_radius) continue;
         if (!near || distXZ(L.pos, p.pos) < distXZ(near.pos, p.pos)) near = L;
       }
-      if (near && !near.lit) prompt = `<kbd>E</kbd> — ${near.everLit ? 'Thắp lại' : 'Nạp ánh sáng'} (${near.deposited}/${lightCost(T, near)})`;
-      else if (near) prompt = `<kbd>E</kbd> — Châm dầu (${Math.floor(fuelValue(near))}/${T.fuel_max})`;
+      const key = `<kbd>${keyLabel(this.keys?.interact ?? 'KeyE')}</kbd>`;
+      if (near && !near.lit) prompt = `${key} — ${near.everLit ? 'Thắp lại' : 'Nạp ánh sáng'} (${near.deposited}/${lightCost(T, near)})`;
+      else if (near) prompt = `${key} — Châm dầu (${Math.floor(fuelValue(near))}/${T.fuel_max})`;
     }
     this.set('prompt', prompt);
 
@@ -150,6 +191,39 @@ export class Hud {
       }
     }
     arrow.classList.toggle('show', show);
+
+    // captions, newest last
+    this.subs = this.subs.filter((s) => s.until > now);
+    this.set('subs', this.subs.map((s) => `<div class="${s.warn ? 'warn' : ''}">${s.text}</div>`).join(''));
+
+    // newly spawned shades: arrow at the screen edge (or ⚠ above the shade when visible)
+    this.marks = this.marks.filter((m) => m.until > now);
+    const box = $('shadearrows');
+    while (box.children.length < this.marks.length) box.appendChild(document.createElement('div'));
+    [...box.children].forEach((el, i) => {
+      const mk = this.marks[i];
+      const sh = mk && view && world.state === 'playing' ? world.shades.find((x) => x.id === mk.id) : null;
+      if (!sh) {
+        el.style.display = 'none';
+        return;
+      }
+      const pr = project(view, [sh.pos[0], sh.pos[1] + 1.6, sh.pos[2]]);
+      el.style.display = '';
+      if (pr.cw > 0 && Math.abs(pr.nx) <= 0.95 && Math.abs(pr.ny) <= 0.95) {
+        el.className = 'shade-mark';
+        el.textContent = '⚠';
+        el.style.left = `${((pr.nx + 1) / 2) * window.innerWidth}px`;
+        el.style.top = `${((1 - pr.ny) / 2) * window.innerHeight}px`;
+        el.style.transform = '';
+      } else {
+        const e = edgeOf(pr);
+        el.className = 'shade-arrow';
+        el.textContent = '';
+        el.style.left = `${e.x}px`;
+        el.style.top = `${e.y}px`;
+        el.style.transform = `rotate(${e.angle}rad)`;
+      }
+    });
     if (now > this.toastUntil) $('toast').classList.remove('show');
   }
 }

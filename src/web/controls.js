@@ -1,6 +1,10 @@
 // Keyboard + mouse → the same input object the headless contract uses.
-// Camera looks along +Z at yaw 0, where screen-right is world −X, so "D"
-// (right) is move x = −1 and "A" is x = +1 (contract: x maps to +X).
+// Camera looks along +Z at yaw 0, where screen-right is world −X, so "right"
+// (D by default) is move x = −1 and "left" (A) is x = +1 (contract: x maps to +X).
+// Every key comes from the remappable keymap (settings.keys, Ticket-04).
+import { DEFAULT_KEYS, normalizeCode } from './settings.js';
+
+const typing = (e) => /^(INPUT|TEXTAREA|SELECT)$/.test(e.target?.tagName ?? '') && e.target.type !== 'range' && e.target.type !== 'checkbox';
 
 export class Controls {
   constructor(canvas) {
@@ -11,14 +15,23 @@ export class Controls {
     this.dist = 10;
     this.sensitivity = 1;
     this.onKey = null; // (code) => void, for menu keys
+    this.capture = null; // (code) => void while the settings screen waits for a new key
+    this.keymap = { ...DEFAULT_KEYS };
 
     addEventListener('keydown', (e) => {
-      if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) e.preventDefault();
-      if (!e.repeat && this.onKey) this.onKey(e.code, e);
-      if (!e.repeat) this.tapped.add(e.code);
-      this.keys.add(e.code);
+      const code = normalizeCode(e.code);
+      if (this.capture) {
+        e.preventDefault();
+        if (!e.repeat) this.capture(code);
+        return;
+      }
+      if (typing(e)) return; // typing a leaderboard name is not playing
+      if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code) || Object.values(this.keymap).includes(code)) e.preventDefault();
+      if (!e.repeat && this.onKey) this.onKey(code, e);
+      if (!e.repeat) this.tapped.add(code);
+      this.keys.add(code);
     });
-    addEventListener('keyup', (e) => this.keys.delete(e.code));
+    addEventListener('keyup', (e) => this.keys.delete(normalizeCode(e.code)));
     addEventListener('blur', () => this.keys.clear());
     canvas.addEventListener('contextmenu', (e) => e.preventDefault());
     canvas.addEventListener('pointerdown', (e) => {
@@ -48,18 +61,19 @@ export class Controls {
 
   /** Called once per simulation tick. */
   sample() {
-    const held = (c) => this.keys.has(c);
-    const k = (c) => this.keys.has(c) || this.tapped.has(c);
-    if (held('ArrowLeft') || held('KeyQ')) this.yawDeg += 2.2 * this.sensitivity;
-    if (held('ArrowRight')) this.yawDeg -= 2.2 * this.sensitivity;
+    const K = this.keymap;
+    const held = (a) => this.keys.has(K[a]);
+    const k = (a) => this.keys.has(K[a]) || this.tapped.has(K[a]);
+    if (held('camLeft')) this.yawDeg += 2.2 * this.sensitivity;
+    if (held('camRight')) this.yawDeg -= 2.2 * this.sensitivity;
     this.yawDeg = ((this.yawDeg % 360) + 540) % 360 - 180;
-    const z = (k('KeyW') || k('ArrowUp') ? 1 : 0) - (k('KeyS') || k('ArrowDown') ? 1 : 0);
-    const x = (k('KeyA') ? 1 : 0) - (k('KeyD') ? 1 : 0);
+    const z = (k('up') ? 1 : 0) - (k('down') ? 1 : 0);
+    const x = (k('left') ? 1 : 0) - (k('right') ? 1 : 0);
     const buttons = {
-      jump: k('Space'),
-      interact: k('KeyE'),
-      pulse: k('KeyF') || this.mouse.pulse,
-      dash: k('ShiftLeft') || k('ShiftRight'),
+      jump: k('jump'),
+      interact: k('interact'),
+      pulse: k('pulse') || this.mouse.pulse,
+      dash: k('dash'),
     };
     // a tap seen this tick must also be seen released before it can fire again
     this.tapped.clear();
