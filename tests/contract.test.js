@@ -1,4 +1,4 @@
-// P3-1, P2-1 (was AC1): game.contract.json v1.2 = Ticket-02 standard numbers + Ticket-03 fuel/win keys.
+// P4-1, P3-1, P2-1 (was AC1): game.contract.json v1.3 = Ticket-02 standard numbers + Ticket-03 fuel/win keys + Ticket-04 bench/soak commands.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -18,10 +18,11 @@ const STANDARD = {
   low_fuel_threshold: 30, capacity_max: 20,
 };
 
-test('contract v1.2 has the required top-level fields', () => {
-  assert.equal(CONTRACT.contract_version, '1.2');
-  for (const k of ['team', 'build_cmd', 'run_cmd', 'headless_cmd']) assert.ok(typeof CONTRACT[k] === 'string' && CONTRACT[k].length > 0, k);
-  assert.ok(fs.existsSync(path.join(ROOT, CONTRACT.headless_cmd.split(/\s+/)[1])), 'headless entry file exists');
+// P4: Ticket-04 bumps the contract to v1.3 and adds bench_cmd + soak_cmd (all v1.0–v1.2 fields stay)
+test('contract v1.3 has the required top-level fields', () => {
+  assert.equal(CONTRACT.contract_version, '1.3');
+  for (const k of ['team', 'build_cmd', 'run_cmd', 'headless_cmd', 'bench_cmd', 'soak_cmd']) assert.ok(typeof CONTRACT[k] === 'string' && CONTRACT[k].length > 0, k);
+  for (const k of ['headless_cmd', 'bench_cmd', 'soak_cmd']) assert.ok(fs.existsSync(path.join(ROOT, CONTRACT[k].split(/\s+/)[1])), `${k} entry file exists`);
 });
 
 test('tuning equals the standard numbers (Ticket-02 + Ticket-03)', () => {
