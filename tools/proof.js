@@ -268,6 +268,42 @@ if (Number(PHASE) >= 4) {
   line();
 }
 
+// 9. Ticket-04 §5: a clean clone runs with the README's three commands
+if (Number(PHASE) >= 4) {
+  line('## 9. Clone sạch → 3 lệnh → chơi được');
+  line();
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ddl-clean-'));
+  const clone = spawnSync('git', ['clone', '--quiet', ROOT, path.join(dir, 'game')], { encoding: 'utf8' });
+  const game = path.join(dir, 'game');
+  const port = 5400 + Math.floor(Math.random() * 400);
+  const t0 = Date.now();
+  const srv = spawnSync(process.execPath, ['-e', `
+    const { spawn } = require('node:child_process');
+    const s = spawn(process.execPath, ['tools/serve.js', '--port', '${port}'], { cwd: ${JSON.stringify(game)} });
+    s.stdout.once('data', async (d) => {
+      const out = { banner: String(d).trim() };
+      for (const p of ['/', '/src/web/main.js', '/game.contract.json', '/api/leaderboard']) {
+        const r = await fetch('http://127.0.0.1:${port}' + p);
+        out[p] = r.status;
+      }
+      console.log(JSON.stringify(out));
+      s.kill();
+    });`], { encoding: 'utf8', timeout: 30000 });
+  const tests = spawnSync('npm', ['test', '--silent'], { cwd: game, encoding: 'utf8', shell: process.platform === 'win32' });
+  const pass = (tests.stdout.match(/^# pass (\d+)/m) || [])[1];
+  const total = (tests.stdout.match(/^# tests (\d+)/m) || [])[1];
+  line('| Lệnh (theo README) | Kết quả |');
+  line('|---|---|');
+  line(`| \`git clone <repo>\` (clone commit \`${git}\` vào thư mục tạm) | mã thoát ${clone.status} |`);
+  line('| `cd <thư mục>` | — |');
+  line(`| \`npm start\` (ở đây chạy \`node tools/serve.js\` không \`--open\`, rồi gọi thử các đường dẫn) | \`${srv.stdout.trim().split(String(port)).join('PORT')}\` sau ${((Date.now() - t0) / 1000).toFixed(1)} s |`);
+  line(`| (thêm) \`npm test\` trong bản clone | ${pass}/${total} đạt |`);
+  line();
+  line('Không cần `npm install`: dự án không có dependency nào.');
+  line();
+  fs.rmSync(dir, { recursive: true, force: true });
+}
+
 fs.writeFileSync(path.join(OUT, 'proof.md'), md.join('\n') + '\n');
 console.log(`wrote ${rel(path.join(OUT, 'proof.md'))}`);
 if (t.status !== 0) process.exitCode = 1;
