@@ -50,7 +50,7 @@ const segments = []; // { kind: 'frames', dir, count } | { kind: 'still', file, 
 let stillNo = 0;
 let coverFrame = null; // a gameplay frame for the README image
 
-const CAP_CSS = 'position:fixed;left:16px;bottom:44px;max-width:560px;padding:9px 15px;border-radius:12px;background:#000d;color:#F5F1E6;font:600 19px/1.35 system-ui,sans-serif;border-left:5px solid #FFB347;z-index:99';
+const CAP_CSS = 'position:fixed;left:16px;top:58px;max-width:430px;padding:9px 15px;border-radius:12px;background:#000d;color:#F5F1E6;font:600 19px/1.35 system-ui,sans-serif;border-left:5px solid #FFB347;z-index:99';
 async function caption(text) {
   await page.evaluate(([t, css]) => {
     let el = document.getElementById('democap');
@@ -134,7 +134,7 @@ await film({ night: 1, from: 560, seconds: 21, text: 'Đêm 1 · Đảo Bến �
 await film({ night: 1, from: 7080, seconds: 6, text: 'Đèn L4 cạn dầu và tắt — thắp lại chỉ cần 5 đom đóm' });
 await film({ night: 1, from: 11100, seconds: 9, text: 'Châm dầu cho đèn L5 (thanh dầu trên đèn), giữ ≥ 3/5 đèn sáng' });
 await film({
-  night: 1, from: 14160, seconds: 5, text: 'Bình minh: 3 đèn đang sáng → thắng Đêm 1 (dawn_survived)',
+  night: 1, from: 14160, seconds: 5, text: 'Sát giờ bình minh: thắp lại L2 → 3/5 đèn sáng → thắng Đêm 1 (dawn_survived)',
   after: async () => {
     await caption('');
     await still(4);
@@ -176,10 +176,10 @@ ${lines.at(-1)}
 $ (chạy lại lần 2, so SHA-256)
 run1 ${hash(h1)}…  run2 ${hash(h2)}…  → ${hash(h1) === hash(h2) ? 'giống hệt (tất định)' : 'KHÁC'}`))));
 
-const soak = sh(process.execPath, ['tools/soak.js', '--seed', '7', '--nights', '10', '--out', path.join(WORK, 'soak.json')]);
+const soak = sh(process.execPath, ['tools/soak.js', '--seed', '7', '--nights', '10', '--out', 'out/demo/soak.json']);
 await still(8, term('Bằng chứng 3/4 · Soak test (soak_cmd)', esc(cut(`$ node tools/soak.js --seed 7 --nights 10 --out soak.json\n${soak}`))));
 
-const bench = sh(process.execPath, ['tools/bench.js', '--seed', '42', '--duration', '30', '--out', path.join(WORK, 'bench.json')]);
+const bench = sh(process.execPath, ['tools/bench.js', '--seed', '42', '--duration', '30', '--out', 'out/demo/bench.json']);
 const bj = fs.existsSync(path.join(WORK, 'bench.json')) ? JSON.parse(fs.readFileSync(path.join(WORK, 'bench.json'), 'utf8')) : {};
 const pick = ['contract_version', 'avg_fps', 'p1_low_fps', 'frame_ms_p95', 'frames', 'load_ms', 'peak_mem_mb', 'vsync_off', 'resolution', 'cpu_ms_avg'].map((k) => `  "${k}": ${JSON.stringify(bj[k])}`).join(',\n');
 await still(9, term('Bằng chứng 4/4 · Benchmark (bench_cmd)', esc(cut(`$ node tools/bench.js --seed 42 --duration 30 --out bench.json\n${bench}\n$ cat bench.json (rút gọn)\n{\n${pick}\n}\n# Máy quay video không có GPU (WebGL bằng phần mềm SwiftShader) nên FPS rất thấp;\n# ngưỡng avg ≥ 60 / 1% low ≥ 30 được đo trên máy chấm có GPU.`))));

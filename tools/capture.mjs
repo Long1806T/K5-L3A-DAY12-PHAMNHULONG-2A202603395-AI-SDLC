@@ -188,7 +188,7 @@ async function phase4() {
   await page.waitForTimeout(250);
   report.checks.last10Subtitle = await page.evaluate(() => document.getElementById('subs').textContent);
   await shot('08-sub-last10', '10 giây cuối: phụ đề + đồng hồ đỏ nhấp nháy');
-  await open(`?night=1&autostart=1&seed=1&debug=1&scenario=${S4}/fuel-low.scenario.json`);
+  await open(`?night=1&autostart=1&seed=1&debug=1&dist=16&scenario=${S4}/fuel-low.scenario.json`);
   await page.evaluate(() => window.__DDL.advance(30));
   await page.waitForTimeout(250);
   report.checks.fuelSubtitle = await page.evaluate(() => document.getElementById('subs').textContent);
@@ -205,7 +205,7 @@ async function phase4() {
 
   // large text ×1.25
   await page.evaluate(() => localStorage.setItem('ddl.settings.v1', JSON.stringify({ largeText: true })));
-  await open(`?night=1&autostart=1&seed=1&scenario=${S4}/fuel-low.scenario.json`);
+  await open(`?night=1&autostart=1&seed=1&dist=16&scenario=${S4}/fuel-low.scenario.json`);
   await page.waitForTimeout(600);
   report.checks.largeTextMinFont = await minFont();
   await shot('10-large-text', 'Chữ lớn ×1,25: mọi chữ trên HUD ≥ 22,5 px');
