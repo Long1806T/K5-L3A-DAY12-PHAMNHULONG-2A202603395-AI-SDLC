@@ -51,9 +51,35 @@ line();
 line(`Kết quả: **${pick('pass')}/${pick('tests')} đạt**, ${pick('fail')} lỗi. Báo cáo đầy đủ: [test-report.txt](test-report.txt).`);
 line();
 
+// 1b. The previous phase's own tests run against this phase's code: shows exactly which
+// old tests the change request broke (each must appear in docs/notes/phase-N.md §1).
+if (Number(PHASE) >= 3) {
+  const prev = `phase-${Number(PHASE) - 1}`;
+  line(`### Test của \`${prev}\` chạy trên code hiện tại (hồi quy)`);
+  line();
+  const has = spawnSync('git', ['rev-parse', '--verify', '-q', `${prev}^{commit}`], { cwd: ROOT, encoding: 'utf8' });
+  if (has.status !== 0) line(`Không có tag \`${prev}\` trong bản clone này nên bỏ qua.`);
+  else {
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'ddl-old-tests-'));
+    for (const f of ['src', 'scenarios', 'tools', 'game.contract.json', 'package.json']) fs.cpSync(path.join(ROOT, f), path.join(tmp, f), { recursive: true });
+    const arc = spawnSync('git', ['archive', prev, 'tests'], { cwd: ROOT, maxBuffer: 1 << 26 });
+    spawnSync('tar', ['-x', '-C', tmp], { input: arc.stdout });
+    const files = fs.readdirSync(path.join(tmp, 'tests')).filter((f) => f.endsWith('.test.js')).map((f) => `tests/${f}`);
+    const r = spawnSync(process.execPath, ['--test', '--test-reporter=tap', ...files], { cwd: tmp, encoding: 'utf8' });
+    const failed = [...r.stdout.matchAll(/^not ok \d+ - (.+)$/gm)].map((m) => m[1]);
+    const cnt = (k) => (r.stdout.match(new RegExp(`^# ${k} (\\d+)`, 'm')) || [])[1];
+    line(`Lấy nguyên thư mục \`tests/\` của \`${prev}\` (\`git archive ${prev} tests\`) chạy trên code hiện tại: **${cnt('pass')}/${cnt('tests')} vẫn đạt**, ${failed.length} test đỏ. Đối chiếu từng test đỏ với bảng "luật bị thay" ở [phase-${PHASE}.md §1](../../notes/phase-${PHASE}.md); bản mới của chúng nằm trong bộ test ở trên, kèm comment \`P${PHASE}:\` hoặc ghi lý do xóa.`);
+    line();
+    for (const f of failed) line(`- ${f}`);
+    line();
+    fs.rmSync(tmp, { recursive: true, force: true });
+  }
+}
+
 // 2. Contract scenarios through the real headless_cmd (this phase + regression of earlier ones)
 const S1 = 'scenarios/phase1';
 const S2 = 'scenarios/phase2';
+const S3 = 'scenarios/phase3';
 const SC = S1;
 const PHASE_RUNS = {
   1: [
@@ -79,6 +105,15 @@ const PHASE_RUNS = {
     ['hit-drop', 1, `${S2}/hit-drop.scenario.json`, null, 500, 'Bị chạm: đom đóm rơi ra vành, tồn tại 480 tick'],
   ],
 };
+PHASE_RUNS[3] = [
+  ['fuel-out', 1, `${S3}/fuel-out.scenario.json`, null, 100, 'Đèn còn 1,5 dầu → tắt ở tick 90 (lantern_out)'],
+  ['refuel', 1, `${S3}/refuel.scenario.json`, `${S3}/interact-now.inputs.json`, 5, 'Châm dầu: dùng 6 đom đóm, fuel về 100'],
+  ['relight', 1, `${S3}/relight.scenario.json`, `${S3}/interact-now.inputs.json`, 3, 'Thắp lại đèn từng sáng: 5 đom đóm, relight: true'],
+  ['drain', 1, `${S3}/drain.scenario.json`, null, 300, 'Bóng Mực hút đèn yếu: fuel_drain mỗi 60 tick, tắt ở tick 251'],
+  ['drain-refuel', 1, `${S3}/drain-refuel.scenario.json`, `${S3}/interact-now.inputs.json`, 120, 'Châm dầu lên ≥ 30: Bóng Mực về wander, bị đẩy ra mép'],
+  ['dawn-win', 1, `${S3}/dawn-win.scenario.json`, null, 100, 'Bình minh, 3/5 đèn sáng → thắng dawn_survived'],
+  ['dawn-lose', 1, `${S3}/dawn-lose.scenario.json`, null, 100, 'Bình minh, 2/5 đèn sáng → thua dawn'],
+];
 const scenarios = [];
 for (let ph = Number(PHASE); ph >= 1; ph--) for (const r of PHASE_RUNS[ph] || []) scenarios.push(r);
 line('## 2. Scenario chạy qua đúng `headless_cmd`');
@@ -108,7 +143,7 @@ line('## 3. File sai định dạng → mã thoát 2');
 line();
 line('| File | Mã thoát | stderr |');
 line('|---|---|---|');
-const badFiles = [S1, S2].flatMap((dir) => (fs.existsSync(path.join(ROOT, dir, 'bad')) ? fs.readdirSync(path.join(ROOT, dir, 'bad')).sort().map((f) => `${dir}/bad/${f}`) : []));
+const badFiles = [S1, S2, S3].flatMap((dir) => (fs.existsSync(path.join(ROOT, dir, 'bad')) ? fs.readdirSync(path.join(ROOT, dir, 'bad')).sort().map((f) => `${dir}/bad/${f}`) : []));
 for (const file of badFiles) {
   const f = path.basename(file);
   const flag = f.includes('scenario') ? '--scenario' : '--inputs';
@@ -176,8 +211,10 @@ line('| Đêm | Lệnh | Thời gian (gồm khởi động Node) | Dòng end |')
 line('|---|---|---|---|');
 for (const night of Number(PHASE) >= 2 ? [1, 2, 3] : [1]) {
   const ticks = contract.tuning[`night${night}_duration_s`] * 60;
-  const perf = headless(['--seed', 5, '--night', night, '--scenario', `${S2}/survive-night${night}.scenario.json`, '--ticks', ticks, '--out', perfOut]);
-  line(`| ${night} | \`--scenario survive-night${night} --ticks ${ticks}\` (Mây đứng trong vùng an toàn của L1, mọi thứ khác tự sinh) | **${perf.ms.toFixed(0)} ms** | \`${JSON.stringify(readJsonl(perfOut).at(-1))}\` |`);
+  const dir = Number(PHASE) >= 3 ? S3 : S2;
+  const why = Number(PHASE) >= 3 ? 'Mây có 999 Ngọn Lửa để sống tới bình minh, mọi thứ khác tự sinh' : 'Mây đứng trong vùng an toàn của L1, mọi thứ khác tự sinh';
+  const perf = headless(['--seed', 5, '--night', night, '--scenario', `${dir}/survive-night${night}.scenario.json`, '--ticks', ticks, '--out', perfOut]);
+  line(`| ${night} | \`--scenario survive-night${night} --ticks ${ticks}\` (${why}) | **${perf.ms.toFixed(0)} ms** | \`${JSON.stringify(readJsonl(perfOut).at(-1))}\` |`);
 }
 line();
 

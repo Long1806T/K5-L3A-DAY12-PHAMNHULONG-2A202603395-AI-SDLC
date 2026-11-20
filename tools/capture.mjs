@@ -11,7 +11,8 @@ import { fileURLToPath } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const arg = (k, d) => (process.argv.includes(k) ? process.argv[process.argv.indexOf(k) + 1] : d);
-const OUT = path.resolve(ROOT, arg('--out', 'docs/proof/phase-2/screens'));
+const PHASE = arg('--phase', '2');
+const OUT = path.resolve(ROOT, arg('--out', `docs/proof/phase-${PHASE}/screens`));
 const PORT = 5199;
 
 function loadPlaywright() {
@@ -70,7 +71,47 @@ const hold = async (key, ms) => {
 };
 const act = (a) => page.evaluate((x) => window.__DDL.act(x), a);
 
+async function phase3() {
+  const S3 = 'scenarios/phase3';
+  await open(`?night=1&autostart=1&seed=1&scenario=${S3}/visual-fuel.scenario.json`);
+  await page.waitForTimeout(1300);
+  report.checks.fuelBars = await page.evaluate(() => [...document.querySelectorAll('.fuel')].filter((e) => e.style.display !== 'none').map((e) => ({ l: e.dataset.l, text: e.lastChild.textContent, low: e.classList.contains('low') })));
+  await shot('01-fuel-bars', 'Thanh dầu trên đèn sáng: L1 80 (bình thường), L2 25 (dưới 30: đỏ, ⚠, nhấp nháy 1 Hz), Bóng Mực đang hút L2 (drain)');
+  await page.waitForTimeout(500);
+  await shot('02-fuel-blink', 'Nửa giây sau: đèn L2 và thanh dầu ở pha tắt của nhịp nhấp nháy 1 Hz');
+  await open(`?night=1&autostart=1&seed=1&dist=16&scenario=${S3}/visual-refuel.scenario.json`);
+  await page.waitForTimeout(500);
+  report.checks.refuelPrompt = await page.evaluate(() => document.getElementById('prompt').textContent);
+  await shot('03-refuel-prompt', 'Đứng cạnh đèn đang sáng: nhắc "E — Châm dầu (fuel/100)"');
+  await page.keyboard.press('KeyE');
+  await page.waitForTimeout(400);
+  report.checks.afterRefuel = await page.evaluate(() => window.__DDL.snapshot().lanterns[0]);
+  await open(`?night=1&autostart=1&seed=1&dist=16&scenario=${S3}/visual-out.scenario.json`);
+  await page.waitForFunction(() => window.__DDL.world.lanterns[0].lit === false, null, { timeout: 15000 });
+  await page.waitForTimeout(300);
+  await shot('04-lantern-out', 'Đèn cạn dầu → tắt (lantern_out), nhắc thắp lại chỉ cần 5 đom đóm');
+  await page.evaluate(() => localStorage.setItem('ddl.settings.v1', JSON.stringify({ volume: 0.7, sensitivity: 1, colorBlind: true })));
+  await open(`?night=1&autostart=1&seed=1&dist=16&scenario=${S3}/visual-colorblind.scenario.json`);
+  await page.waitForTimeout(1200);
+  report.checks.colorBlind = await page.evaluate(() => ({ setting: window.__DDL.settings.colorBlind, bodyClass: document.body.className, danger: getComputedStyle(document.body).getPropertyValue('--danger').trim() }));
+  await shot('05-colorblind', 'Bảng màu dễ phân biệt: viền/mắt Bóng Mực #00B3FF đang hút L2 (bên trái, nhấp nháy), L1 đã tắt xẹp 20% có vết rách (bên phải), cảnh báo trắng + ⚠');
+  await page.evaluate(() => localStorage.setItem('ddl.settings.v1', JSON.stringify({ volume: 0.7, sensitivity: 1, colorBlind: false })));
+  await open(`?night=1&autostart=1&seed=1&dist=16&scenario=${S3}/visual-colorblind.scenario.json`);
+  await page.waitForTimeout(1200);
+  await shot('06-normal-colors', 'Cùng cảnh với bảng màu thường để so sánh (viền tím #7A3CFF, đèn tắt không xẹp)');
+  await open(`?night=1&autostart=1&seed=1&scenario=${S3}/dawn-win.scenario.json`);
+  await page.waitForFunction(() => window.__DDL.mode === 'result', null, { timeout: 15000 });
+  await shot('07-dawn-survived', 'Bình minh với 3/5 đèn sáng → thắng (dawn_survived), điểm bình minh');
+  await open(`?night=1&autostart=1&seed=1&scenario=${S3}/dawn-lose.scenario.json`);
+  await page.waitForFunction(() => window.__DDL.mode === 'result', null, { timeout: 15000 });
+  await shot('08-dawn-lost', 'Bình minh với 2/5 đèn sáng → thua (dawn)');
+}
+
 try {
+  if (PHASE === '3') {
+    await phase3();
+    throw Object.assign(new Error('done'), { done: true });
+  }
   await open('?seed=7');
   await shot('01-menu', 'Menu chính: Chơi, chọn Đêm, Cài đặt, Điều khiển');
   await act('play');
@@ -173,6 +214,8 @@ try {
     note: 'SwiftShader software WebGL in a 2-vCPU container without GPU: avg_fps measures CPU rasterisation, cpu_ms is the game\'s own JS work per frame',
   };
   await shot('15-fps', 'Đo FPS 1280×720 (góc phải trên)');
+} catch (e) {
+  if (!e.done) throw e;
 } finally {
   report.problems = problems;
   fs.writeFileSync(path.join(OUT, 'capture-report.json'), JSON.stringify(report, null, 2) + '\n');

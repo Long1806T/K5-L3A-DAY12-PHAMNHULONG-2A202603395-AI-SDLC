@@ -7,8 +7,8 @@ description: Run the game's checks and save evidence for a phase (tests, headles
 
 1. `npm test`: must be green. If red, fix the code (never weaken a test to make it pass; if a requirement changed, update the test, add a `P<n>:` comment with the reason, and list it in `docs/notes/phase-N.md`).
 2. Every new rule/feature gets a scenario in `scenarios/phaseN/` (scenario + inputs, contract format) and a test in `tests/features.test.js` that runs it through `headless_cmd` (`cli()` in `tests/helpers.js`). Use the night the feature lives on (`--night 2/3`).
-3. Add the new scenarios to `PHASE_RUNS` in `tools/proof.js`, then `npm run proof -- --phase N`. It regenerates `docs/proof/phase-N/proof.md`, `runs/`, `test-report.txt` (all nights: determinism, full-night speed, autopilot). Never edit those files by hand.
-4. `node tools/capture.mjs --out docs/proof/phase-N/screens` plays the browser build in headless Chrome (SwiftShader) and writes screenshots + `capture-report.json` (checks: arrow, pause, settings persistence, wind, sounds fired, FPS + CPU ms). Any console error fails the run.
+3. Add the new scenarios to `PHASE_RUNS` in `tools/proof.js`, then `npm run proof -- --phase N`. It regenerates `docs/proof/phase-N/proof.md`, `runs/`, `test-report.txt` (all nights: determinism, full-night speed, autopilot) and, from Phase 3, runs the previous phase's `tests/` against the new code so every broken old test is listed. Never edit those files by hand.
+4. `node tools/capture.mjs --phase N` (writes `docs/proof/phase-N/screens`) plays the browser build in headless Chrome (SwiftShader) and writes screenshots + `capture-report.json` (checks: arrow, pause, settings persistence, wind, sounds fired, FPS + CPU ms). Any console error fails the run.
 5. `sh scripts/harness-check.sh N` proves the hooks still block a red suite.
 6. Update the hand-written traceability table `docs/proof/phase-N/README.md`: requirement → how verified → evidence → result. Write "chưa đạt" honestly (e.g. FPS measured only in software rendering).
 7. Commit evidence last, in its own commit, right after the code it describes.
