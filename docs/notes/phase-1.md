@@ -62,3 +62,12 @@ Mỗi dòng là một câu kiểm tra được. Cột "Kiểm chứng" trỏ t�
 3. Test CLI chạy đúng `headless_cmd` trong contract, kiểm tra định dạng JSONL, mã thoát.
 4. Tất định: chạy 2 lần so sánh SHA-256.
 5. Giao diện: script Playwright mở game trong Chrome headless, chơi theo kịch bản, chụp ảnh HUD/thắng/thua.
+
+## 5. Đánh giá Phase 1
+
+- **Đạt:** 15/15 tiêu chí nghiệm thu (AC1–AC15) và harness H1, xem [bảng truy vết](../proof/phase-1/README.md). 48 test xanh. Output tất định (SHA-256 trùng). Autopilot thắng 11/11 seed, replay qua CLI ra đúng dòng `end`.
+- **Chưa đạt / giới hạn:** chưa playtest bằng tay trên laptop thật, chưa có âm thanh, chưa hỗ trợ cảm ứng. Độ khó chưa cân chỉnh: bot thắng dễ vì chơi hoàn hảo.
+- **Hồi quy:** không áp dụng (phase đầu).
+- **AI sai ở đâu:** 7 lỗi nhỏ, đều bắt được bằng test, review diff hoặc đọc ảnh/bằng chứng sinh ra. Chi tiết trong [ai-log.md](ai-log.md).
+- **Chỉnh harness:** thêm luật 7 vào `AGENTS.md` (test dài phải ở safe zone). Thêm test chặn `Math.random`/`Date` trong `src/core`, để lỗi phá tính tất định không thể lọt vào thay vì chỉ dặn bằng lời. Script `harness-check.sh` chứng minh hook chặn khi test đỏ.
+- **Rủi ro cho phase sau:** contract có thể đổi (nhiều đêm, `sim_tick` ≠ `tick`). Logic đã tách theo `night` và `simTick` riêng để dễ mở rộng.
